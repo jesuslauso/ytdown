@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>YTDown — YouTube 下載器</title>
+<style>
+:root {
+  --bg:     #0f0f0f;
+  --bg2:    #1a1a1a;
+  --bg3:    #242424;
+  --bg4:    #2e2e2e;
+  --border: #333;
+  --text:   #e8e8e8;
+  --text2:  #aaa;
+  --text3:  #666;
+  --red:    #ff4444;
+  --green:  #22cc66;
+  --yellow: #ffaa00;
+  --blue:   #4488ff;
+  --r:      10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;padding-bottom:60px}
+
+.hdr{background:linear-gradient(135deg,#1a0000,#0f0f0f 60%);border-bottom:1px solid #2a0000;padding:18px 0 14px;text-align:center}
+.logo{font-size:1.9rem;font-weight:800;letter-spacing:-1px}.logo span{color:var(--red)}
+.tagline{color:var(--text2);font-size:.8rem;margin-top:4px}
+.badges{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.badge{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.73rem;color:var(--text2)}
+
+.sbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:7px 20px;display:flex;align-items:center;gap:10px;font-size:.78rem;flex-wrap:wrap}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--text3)}
+.sdot.ok{background:var(--green)}.sdot.checking{background:var(--yellow);animation:pulse 1s infinite}.sdot.fail{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sbar-link{color:var(--text3);cursor:pointer;text-decoration:underline;font-size:.75rem;background:none;border:none;padding:0}
+.sbar-link:hover{color:var(--text2)}
+
+.mode-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);margin-bottom:0}
+.mode-tab{flex:1;padding:10px;text-align:center;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--text2);border:none;background:none;border-bottom:2px solid transparent;transition:all .15s}
+.mode-tab.active{color:var(--red);border-bottom-color:var(--red)}
+
+.main{max-width:780px;margin:0 auto;padding:20px 16px 0}
+
+.url-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.url-row{display:flex;gap:8px}
+.url-inp{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:.95rem;outline:none;transition:border-color .2s;min-width:0}
+.url-inp:focus{border-color:var(--red)}
+.url-inp::placeholder{color:var(--text3)}
+.btn{border:none;border-radius:8px;padding:10px 18px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#e03333}.btn-red:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}.btn-ghost:hover{background:var(--bg4)}
+.btn-green{background:var(--green);color:#000;font-weight:700}.btn-green:hover{background:#1db85a}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#3377ee}
+.url-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+
+.batch-area{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:.85rem;outline:none;resize:vertical;min-height:100px;font-family:inherit;line-height:1.6}
+.batch-area:focus{border-color:var(--red)}
+.batch-area::placeholder{color:var(--text3)}
+
+.notice{display:none;padding:10px 14px;border-radius:8px;font-size:.85rem;margin-bottom:12px;line-height:1.5}
+.notice.show{display:block}
+.notice.err{background:#2a0a0a;border:1px solid #aa2222;color:#ff8888}
+.notice.warn{background:#2a2000;border:1px solid #886600;color:#ffcc44}
+.notice.ok{background:#0a2a14;border:1px solid #226644;color:#66ffaa}
+
+.info-card{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.info-card.show{display:flex;gap:14px;align-items:flex-start}
+.thumb{width:120px;height:68px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bg3)}
+.vid-meta{flex:1;min-width:0}
+.vid-title{font-size:.95rem;font-weight:600;line-height:1.3;margin-bottom:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vid-sub{color:var(--text2);font-size:.8rem;margin-bottom:6px}
+.vid-badges{display:flex;gap:6px;flex-wrap:wrap}
+.vid-badge{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font-size:.72rem;color:var(--text2)}
+
+.preview-box{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.preview-box.show{display:block}
+.preview-title{font-size:.78rem;color:var(--text2);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.preview-player{width:100%;display:flex;flex-direction:column;gap:8px}
+.preview-time-row{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--text2)}
+.preview-seek{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--bg4);outline:none;cursor:pointer}
+.preview-seek::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--red);cursor:pointer}
+.preview-seek::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--red);cursor:pointer;border:none}
+.preview-ctrl{display:flex;align-items:center;gap:8px}
+.preview-btn{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text);font-size:.82rem;cursor:pointer}
+.preview-btn:hover{background:var(--bg4)}
+.preview-vol{width:70px;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--bg4);outline:none;cursor:pointer}
+.preview-vol::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--text2);cursor:pointer}
+.preview-vol::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--text2);cursor:pointer;border:none}
+
+.trim-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:8px}
+.trim-title{font-size:.75rem;color:var(--text2);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.trim-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.trim-label{font-size:.78rem;color:var(--text2);white-space:nowrap}
+.trim-inp{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.85rem;width:90px;outline:none;text-align:center}
+.trim-inp:focus{border-color:var(--red)}
+.trim-set-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text2);font-size:.75rem;cursor:pointer;white-space:nowrap}
+.trim-set-btn:hover{background:var(--bg4);color:var(--text)}
+.trim-check{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.82rem;color:var(--text2)}
+.trim-check input{width:15px;height:15px;cursor:pointer;accent-color:var(--red)}
+
+.fmt-box{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.fmt-box.show{display:block}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{padding:7px 16px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;background:var(--bg3);color:var(--text2);border:1px solid var(--border);transition:all .15s}
+.tab.active{background:var(--red);color:#fff;border-color:var(--red)}
+.out-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.out-label{font-size:.78rem;color:var(--text2);white-space:nowrap}
+.out-chip{padding:4px 10px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;background:var(--bg3);color:var(--text2);border:1px solid var(--border);transition:all .15s}
+.out-chip.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.aq-chip{padding:4px 10px;border-radius:6px;font-size:.78rem;cursor:pointer;background:var(--bg3);color:var(--text2);border:1px solid var(--border);transition:all .15s}
+.aq-chip.sel{background:var(--bg4);color:var(--text);border-color:var(--text2)}
+.q-list{display:flex;flex-direction:column;gap:6px}
+.q-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.q-item:hover{border-color:var(--text3)}
+.q-item.sel{border-color:var(--red);background:#1a0808}
+.q-radio{width:14px;height:14px;border-radius:50%;border:2px solid var(--text3);flex-shrink:0;transition:all .15s}
+.q-item.sel .q-radio{border-color:var(--red);background:var(--red)}
+.q-label{flex:1;font-size:.88rem}
+.q-sub{color:var(--text2);font-size:.75rem;margin-left:6px}
+.q-badge{padding:2px 7px;border-radius:4px;font-size:.7rem;font-weight:700}
+.q-badge.hd{background:#1a2a4a;color:#88aaff}
+.q-badge.sd{background:var(--bg4);color:var(--text3)}
+.q-size{color:var(--text3);font-size:.75rem;white-space:nowrap}
+.preview-fmt-btn{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text2);font-size:.75rem;cursor:pointer;margin-left:auto;flex-shrink:0}
+.preview-fmt-btn:hover{background:var(--bg4);color:var(--text)}
+
+.dl-box{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.dl-box.show{display:block}
+.dl-info{font-size:.78rem;color:var(--text2);margin-bottom:10px;min-height:1em}
+.dl-row{display:flex;gap:8px}
+.prog-wrap{display:none;margin-top:10px}
+.prog-wrap.show{display:block}
+.prog-bg{background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;margin-bottom:6px}
+.prog-bar{height:100%;background:var(--red);border-radius:4px;transition:width .3s;width:0}
+.prog-bar.cvt{background:var(--yellow)}
+.prog-txt{font-size:.75rem;color:var(--text2)}
+
+.info-note{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--text2);margin-top:10px;line-height:1.5}
+
+.batch-queue{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.bq-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.bq-header{display:flex;align-items:center;gap:10px}
+.bq-thumb{width:60px;height:34px;object-fit:cover;border-radius:4px;background:var(--bg3);flex-shrink:0}
+.bq-info{flex:1;min-width:0}
+.bq-title{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bq-sub{font-size:.72rem;color:var(--text2);margin-top:2px}
+.bq-status{font-size:.72rem;padding:2px 8px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.bq-status.pending{background:var(--bg3);color:var(--text3)}
+.bq-status.analyzing{background:#2a2000;color:var(--yellow)}
+.bq-status.ready{background:#0a2a14;color:var(--green)}
+.bq-status.downloading{background:#0a1a2a;color:var(--blue)}
+.bq-status.done{background:#0a2a14;color:var(--green)}
+.bq-status.error{background:#2a0a0a;color:var(--red)}
+.bq-prog{height:3px;background:var(--bg3);border-radius:2px;margin-top:8px;overflow:hidden;display:none}
+.bq-prog.show{display:block}
+.bq-prog-bar{height:100%;background:var(--blue);border-radius:2px;transition:width .3s;width:0}
+.bq-remove{background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px;font-size:.8rem;border-radius:4px}
+.bq-remove:hover{background:var(--bg4);color:var(--red)}
+.bq-fmt-row{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
+.bq-fmt-label{font-size:.72rem;color:var(--text3)}
+.batch-actions{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+
+.hist-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.hist-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;user-select:none}
+.hist-hdr:hover{background:var(--bg3)}
+.hist-title{font-size:.85rem;font-weight:600;flex:1}
+.hist-count{font-size:.75rem;color:var(--text2)}
+.hist-toggle{color:var(--text3);font-size:.8rem}
+.hist-list{display:none;border-top:1px solid var(--border)}
+.hist-list.open{display:block}
+.hist-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.hist-item:last-child{border-bottom:none}
+.hist-item:hover{background:var(--bg3)}
+.hist-thumb{width:60px;height:34px;object-fit:cover;border-radius:4px;background:var(--bg3);flex-shrink:0}
+.hist-info{flex:1;min-width:0}
+.hist-ttl{font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-sub{font-size:.73rem;color:var(--text2)}
+.hist-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:4px;font-size:.8rem}
+.hist-del:hover{background:var(--bg4);color:var(--red)}
+.hist-empty{padding:16px;text-align:center;color:var(--text3);font-size:.82rem}
+
+.footer{text-align:center;color:var(--text3);font-size:.73rem;padding:24px 16px 0;line-height:1.8}
+.footer a{color:var(--text3);text-decoration:none}.footer a:hover{color:var(--text2)}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin .8s linear infinite}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo">YT<span>Down</span></div>
+  <div class="tagline">純前端 · 零成本 · 無廣告 · 手機電腦均可用</div>
+  <div class="badges">
+    <span class="badge">MP3</span>
+    <span class="badge">M4A</span>
+    <span class="badge">Opus</span>
+    <span class="badge">MP4（含聲）</span>
+    <span class="badge">剪輯</span>
+    <span class="badge">批量</span>
+  </div>
+</div>
+
+<div class="sbar">
+  <span class="sdot checking" id="instDot"></span>
+  <span id="instTxt">正在偵測伺服器...</span>
+  <span style="color:var(--border)">·</span>
+  <button class="sbar-link" onclick="retryDetect()">重新偵測</button>
+</div>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" id="modeTabSingle" onclick="switchMode('single')">🎵 單首下載</button>
+  <button class="mode-tab" id="modeTabBatch" onclick="switchMode('batch')">📦 批量下載</button>
+</div>
+
+<div class="main">
+
+<!-- SINGLE MODE -->
+<div id="singleMode">
+  <div class="url-box">
+    <div class="url-row">
+      <input class="url-inp" id="url" type="url"
+        placeholder="貼上 YouTube 連結..."
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        inputmode="url">
+      <button class="btn btn-red" id="btnAnalyze" onclick="analyze()">
+        <span id="analyzeIcon">🔍</span>&nbsp;<span id="analyzeTxt">解析</span>
+      </button>
+    </div>
+    <div class="url-actions">
+      <button class="btn btn-ghost" onclick="pasteFn()">📋 貼上</button>
+      <button class="btn btn-ghost" onclick="clearFn()">✕ 清除</button>
+    </div>
+  </div>
+
+  <div class="notice" id="notice"></div>
+
+  <div class="info-card" id="infoCard">
+    <img class="thumb" id="thumb" src="" alt="" onerror="this.style.display='none'">
+    <div class="vid-meta">
+      <div class="vid-title" id="vidTitle"></div>
+      <div class="vid-sub" id="vidSub"></div>
+      <div class="vid-badges" id="vidBadges"></div>
+    </div>
+  </div>
+
+  <!-- Preview player -->
+  <div class="preview-box" id="previewBox">
+    <div class="preview-title">預覽播放</div>
+    <div class="preview-player">
+      <div class="preview-ctrl">
+        <button class="preview-btn" id="prevPlayBtn" onclick="togglePreview()">▶ 播放</button>
+        <span id="prevTimeCur" style="font-size:.78rem;color:var(--text2);min-width:38px">0:00</span>
+        <input type="range" class="preview-seek" id="prevSeek" value="0" min="0" step="0.1">
+        <span id="prevTimeTot" style="font-size:.78rem;color:var(--text2);min-width:38px">0:00</span>
+        <span style="font-size:.75rem;color:var(--text3)">音量</span>
+        <input type="range" class="preview-vol" id="prevVol" value="80" min="0" max="100">
+      </div>
+    </div>
+    <audio id="previewAudio" preload="none" style="display:none"></audio>
+
+    <div class="trim-box">
+      <div class="trim-title">✂ 剪輯（選填）</div>
+      <div class="trim-row">
+        <label class="trim-check">
+          <input type="checkbox" id="trimEnabled" onchange="onTrimToggle()">
+          啟用剪輯
+        </label>
+        <span class="trim-label">開始</span>
+        <input class="trim-inp" id="trimStart" type="text" placeholder="0:00" value="0:00" disabled>
+        <button class="trim-set-btn" id="btnSetStart" onclick="setTrimFromPlayer('start')" disabled>設為目前位置</button>
+        <span class="trim-label">結束</span>
+        <input class="trim-inp" id="trimEnd" type="text" placeholder="結束" value="" disabled>
+        <button class="trim-set-btn" id="btnSetEnd" onclick="setTrimFromPlayer('end')" disabled>設為目前位置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Format box -->
+  <div class="fmt-box" id="fmtBox">
+    <div class="tabs">
+      <button class="tab active" id="tabAudio" onclick="switchTab('audio')">🎵 音訊</button>
+      <button class="tab" id="tabVideo" onclick="switchTab('video')">🎬 影片</button>
+    </div>
+    <div class="out-row">
+      <span class="out-label">格式</span>
+      <div id="fmtChips"></div>
+    </div>
+    <div id="aqFilter" style="display:none">
+      <div class="out-row">
+        <span class="out-label">篩選</span>
+        <div id="aqChips"></div>
+      </div>
+    </div>
+    <div class="q-list" id="qList"></div>
+    <div class="info-note" id="infoNote" style="display:none"></div>
+  </div>
+
+  <!-- Download box -->
+  <div class="dl-box" id="dlBox">
+    <div class="dl-info" id="dlInfo"></div>
+    <div class="dl-row">
+      <button class="btn btn-red" id="btnDl" onclick="startDl()" style="flex:1">⬇ 下載</button>
+      <button class="btn btn-green" id="btnSave" onclick="triggerSave()" style="display:none">⇓ 儲存</button>
+    </div>
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-bg"><div class="prog-bar" id="progBar"></div></div>
+      <div class="prog-txt" id="progTxt"></div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="hist-box">
+    <div class="hist-hdr" onclick="toggleHist()">
+      <span class="hist-title">📋 下載紀錄</span>
+      <span class="hist-count" id="histCount">0 筆</span>
+      <span class="hist-toggle" id="histToggle">▼</span>
+    </div>
+    <div class="hist-list" id="histList"></div>
+  </div>
+</div>
+
+<!-- BATCH MODE -->
+<div id="batchMode" style="display:none">
+  <div class="url-box">
+    <div style="font-size:.82rem;color:var(--text2);margin-bottom:8px">每行輸入一個 YouTube 連結（最多 20 個）</div>
+    <textarea class="batch-area" id="batchUrls" placeholder="https://www.youtube.com/watch?v=...&#10;https://www.youtube.com/watch?v=..."></textarea>
+    <div class="url-actions">
+      <button class="btn btn-red" onclick="batchAnalyze()">🔍 解析全部</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('batchUrls').value=''">✕ 清除</button>
+    </div>
+  </div>
+  <div class="notice" id="batchNotice"></div>
+  <div id="batchFmtBar" style="display:none;margin-bottom:12px">
+    <div class="out-row">
+      <span class="out-label">格式</span>
+      <div id="batchFmtChips"></div>
+    </div>
+    <div class="batch-actions">
+      <button class="btn btn-red" id="btnBatchDl" onclick="batchStartAll()">⬇ 全部下載</button>
+    </div>
+  </div>
+  <div class="batch-queue" id="batchQueue"></div>
+</div>
+
+<div class="footer">
+  YTDown &nbsp;·&nbsp; 純前端，資料不經任何第三方伺服器儲存
+</div>
+
+</div><!-- .main -->
+
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════════════════════════
+var currentApi    = null;
+var currentApiIdx = 0;
+var apiList       = [];
+var videoData     = null;
+var selFmt        = null;
+var outFmt        = 'm4a';
+var curTab        = 'audio';
+var dlBlob        = null;
+var dlFilename    = '';
+var analyzing     = false;
+var downloading   = false;
+var aqFilter      = 'all';
+var curMode       = 'single';
+var previewAudio  = null;
+var batchQueue    = [];
+var batchRunning  = false;
+var batchOutFmt   = 'm4a';
+
+// Piped API instances — ordered by reliability
+var PIPED_APIS = [
+  'https://api.piped.private.coffee',
+  'https://pipedapi.kavin.rocks',
+  'https://api.piped.yt',
+  'https://piped.adminforge.de',
+  'https://api.piped.projectsegfau.lt',
+  'https://piped-api.garudalinux.org',
+  'https://piped.privacy.com.de',
+  'https://api.piped.privacydev.net',
+  'https://piped.syncpundit.io',
+  'https://piped.drgns.space',
+  'https://api.piped.sh',
+  'https://piped.smnz.de',
+  'https://watchapi.whatever.social',
+  'https://api.piped.yt',
+  'https://piped.phoenixthrush.com',
+  'https://piped.mint.lgbt',
+];
+
+var TEST_VID = '9bZkp7q19f0'; // PSY Gangnam Style
+
+// ═══════════════════════════════════════════════════════════════
+//  COMPAT
+// ═══════════════════════════════════════════════════════════════
+function makeSignal(ms) {
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+    return AbortSignal.timeout(ms);
+  }
+  var ctrl = new AbortController();
+  setTimeout(function() { ctrl.abort(); }, ms);
+  return ctrl.signal;
+}
+
+function delay(ms) {
+  return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODE SWITCH
+// ═══════════════════════════════════════════════════════════════
+function switchMode(mode) {
+  curMode = mode;
+  document.getElementById('modeTabSingle').classList.toggle('active', mode === 'single');
+  document.getElementById('modeTabBatch').classList.toggle('active', mode === 'batch');
+  document.getElementById('singleMode').style.display = mode === 'single' ? '' : 'none';
+  document.getElementById('batchMode').style.display = mode === 'batch' ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INSTANCE DETECTION
+// ═══════════════════════════════════════════════════════════════
+function detectInstance() {
+  setInstStatus('checking', '正在偵測可用伺服器...');
+  var apis = PIPED_APIS.slice();
+  // Try to get fresh list from piped-instances
+  fetch('https://piped-instances.kavin.rocks/', { signal: makeSignal(5000) })
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function(list) {
+      var fresh = list.map(function(i) { return i.api_url; }).filter(Boolean);
+      var seen = {};
+      fresh.forEach(function(u) { seen[u] = true; });
+      apis = fresh.concat(apis.filter(function(u) { return !seen[u]; }));
+      apiList = apis;
+      tryNextApi(apis, 0);
+    })
+    .catch(function() { apiList = apis; tryNextApi(apis, 0); });
+}
+
+function tryNextApi(apis, idx) {
+  if (idx >= apis.length) {
+    setInstStatus('fail', '所有伺服器暫時無法連線，請稍後點「重新偵測」');
+    return;
+  }
+  var api = apis[idx];
+  fetch(api + '/streams/' + TEST_VID, {
+    signal: makeSignal(8000),
+    headers: { 'Accept': 'application/json' }
+  })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(d) {
+      if (d && d.title) {
+        currentApi = api;
+        currentApiIdx = idx;
+        setInstStatus('ok', '伺服器就緒 · ' + api.replace('https://', ''));
+      } else {
+        throw new Error('無效回應');
+      }
+    })
+    .catch(function() {
+      tryNextApi(apis, idx + 1);
+    });
+}
+
+function retryDetect() {
+  currentApi = null;
+  currentApiIdx = 0;
+  detectInstance();
+}
+
+function setInstStatus(state, msg) {
+  document.getElementById('instDot').className = 'sdot ' + state;
+  document.getElementById('instTxt').textContent = msg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════════
+function extractVideoId(url) {
+  url = url.trim();
+  var m;
+  m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  m = url.match(/youtube\.com\/(?:embed|shorts|live)\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+  return null;
+}
+
+function fmtSize(bytes) {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function fmtDur(secs) {
+  if (!secs && secs !== 0) return '';
+  secs = Math.round(secs);
+  var h = Math.floor(secs / 3600);
+  var m = Math.floor((secs % 3600) / 60);
+  var s = secs % 60;
+  if (h) return h + ':' + pad2(m) + ':' + pad2(s);
+  return m + ':' + pad2(s);
+}
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function sanitizeFilename(s) {
+  return s.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\s+/g, '_').slice(0, 80);
+}
+
+function parseTime(str) {
+  str = String(str || '').trim();
+  if (!str) return 0;
+  if (/^\d+(\.\d+)?$/.test(str)) return parseFloat(str);
+  var parts = str.split(':');
+  var secs = 0;
+  for (var i = 0; i < parts.length; i++) {
+    secs = secs * 60 + (parseFloat(parts[i]) || 0);
+  }
+  return secs;
+}
+
+function secsToStr(secs) {
+  secs = Math.max(0, Math.round(secs));
+  var h = Math.floor(secs / 3600);
+  var m = Math.floor((secs % 3600) / 60);
+  var s = secs % 60;
+  if (h) return h + ':' + pad2(m) + ':' + pad2(s);
+  return m + ':' + pad2(s);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ANALYZE (SINGLE)
+// ═══════════════════════════════════════════════════════════════
+function analyze() {
+  if (analyzing) return;
+  var url = document.getElementById('url').value.trim();
+  if (!url) { showNotice('err', '請輸入 YouTube 連結'); return; }
+  var vid = extractVideoId(url);
+  if (!vid) { showNotice('err', '無法識別影片 ID，請確認連結格式正確'); return; }
+  if (!currentApi) { showNotice('warn', '伺服器尚未就緒，請稍候再試，或點「重新偵測」'); return; }
+
+  analyzing = true;
+  setBtnAnalyze(true);
+  hideNotice();
+  hideResults();
+  stopPreview();
+
+  // Try current API first, then silently try others
+  fetchFromApi(currentApi, vid)
+    .then(function(data) {
+      if (data) return data;
+      // Current API failed — try others silently with delay between each
+      return silentRetryAll(vid);
+    })
+    .then(function(data) {
+      if (!data) throw new Error('所有伺服器均無法解析此影片，請稍後再試');
+      videoData = data;
+      videoData._vid = vid;
+      showVideoInfo(videoData);
+      buildFormatList();
+      document.getElementById('fmtBox').classList.add('show');
+      document.getElementById('dlBox').classList.add('show');
+      resetDlState();
+      initPreview();
+    })
+    .catch(function(e) {
+      // Only show error — never reset currentApi or trigger detectInstance
+      showNotice('err', '解析失敗：' + (e.message || '未知錯誤') + '。請稍後再試。');
+    })
+    .then(function() {
+      analyzing = false;
+      setBtnAnalyze(false);
+    });
+}
+
+function fetchFromApi(api, vid) {
+  return fetch(api + '/streams/' + vid, {
+    signal: makeSignal(15000),
+    headers: { 'Accept': 'application/json' }
+  })
+    .then(function(r) {
+      if (!r.ok) return null;
+      return r.json();
+    })
+    .then(function(d) {
+      if (!d || !d.title) return null;
+      return d;
+    })
+    .catch(function() { return null; });
+}
+
+// Try all other APIs in order, with a small delay between each
+function silentRetryAll(vid) {
+  var apis = apiList.length ? apiList : PIPED_APIS.slice();
+  var startIdx = (currentApiIdx + 1) % apis.length;
+  return silentTryFrom(apis, startIdx, vid, 0);
+}
+
+function silentTryFrom(apis, idx, vid, tried) {
+  if (tried >= apis.length) return Promise.resolve(null);
+  var api = apis[idx];
+  // Skip the one we already tried
+  if (api === currentApi) {
+    return silentTryFrom(apis, (idx + 1) % apis.length, vid, tried + 1);
+  }
+  return delay(500)
+    .then(function() {
+      return fetch(api + '/streams/' + vid, {
+        signal: makeSignal(12000),
+        headers: { 'Accept': 'application/json' }
+      });
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(d) {
+      if (d && d.title) {
+        // Found a working API — update current
+        currentApi = api;
+        currentApiIdx = idx;
+        setInstStatus('ok', '伺服器就緒 · ' + api.replace('https://', ''));
+        return d;
+      }
+      throw new Error('無效回應');
+    })
+    .catch(function() {
+      return silentTryFrom(apis, (idx + 1) % apis.length, vid, tried + 1);
+    });
+}
+
+function setBtnAnalyze(loading) {
+  var btn = document.getElementById('btnAnalyze');
+  btn.disabled = loading;
+  document.getElementById('analyzeIcon').textContent = loading ? '⏳' : '🔍';
+  document.getElementById('analyzeIcon').className = loading ? 'spin' : '';
+  document.getElementById('analyzeTxt').textContent = loading ? '解析中...' : '解析';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  VIDEO INFO
+// ═══════════════════════════════════════════════════════════════
+function showVideoInfo(d) {
+  var thumbUrl = d.thumbnailUrl || '';
+  var img = document.getElementById('thumb');
+  if (thumbUrl) { img.src = thumbUrl; img.style.display = ''; }
+  else { img.style.display = 'none'; }
+  document.getElementById('vidTitle').textContent = d.title || '未知標題';
+  document.getElementById('vidSub').textContent = [d.uploader, fmtDur(d.duration)].filter(Boolean).join(' · ');
+  var badges = document.getElementById('vidBadges');
+  badges.innerHTML = '';
+  if (d.uploadedDate) badges.innerHTML += '<span class="vid-badge">' + escHtml(d.uploadedDate) + '</span>';
+  if (d.views) badges.innerHTML += '<span class="vid-badge">' + escHtml(Number(d.views).toLocaleString()) + ' 次觀看</span>';
+  document.getElementById('infoCard').classList.add('show');
+  addHistory({ vid: d._vid, title: d.title, author: d.uploader, thumb: thumbUrl, dur: d.duration });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PREVIEW PLAYER
+// ═══════════════════════════════════════════════════════════════
+function initPreview() {
+  if (!videoData) return;
+  var af = (videoData.audioStreams || []).filter(function(f) { return f.url; });
+  af.sort(function(a, b) { return (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0); });
+  if (!af.length) return;
+
+  var audio = document.getElementById('previewAudio');
+  audio.src = af[0].url;
+  audio.volume = 0.8;
+  previewAudio = audio;
+
+  var seek = document.getElementById('prevSeek');
+  var playBtn = document.getElementById('prevPlayBtn');
+  var timeCur = document.getElementById('prevTimeCur');
+  var timeTot = document.getElementById('prevTimeTot');
+  var vol = document.getElementById('prevVol');
+
+  var totalDur = videoData.duration || 0;
+  if (totalDur) {
+    seek.max = totalDur;
+    timeTot.textContent = fmtDur(totalDur);
+    document.getElementById('trimEnd').placeholder = fmtDur(totalDur);
+  }
+
+  audio.onloadedmetadata = function() {
+    if (audio.duration && isFinite(audio.duration)) {
+      seek.max = audio.duration;
+      timeTot.textContent = fmtDur(audio.duration);
+      document.getElementById('trimEnd').placeholder = fmtDur(audio.duration);
+    }
+  };
+
+  audio.ontimeupdate = function() {
+    if (!audio.seeking) {
+      seek.value = audio.currentTime;
+      timeCur.textContent = fmtDur(audio.currentTime);
+    }
+  };
+
+  audio.onended = function() { playBtn.textContent = '▶ 播放'; };
+  audio.onerror = function() { playBtn.textContent = '▶ 播放'; };
+
+  seek.oninput = function() {
+    audio.currentTime = parseFloat(seek.value);
+    timeCur.textContent = fmtDur(audio.currentTime);
+  };
+
+  vol.oninput = function() {
+    audio.volume = parseInt(vol.value) / 100;
+  };
+
+  document.getElementById('previewBox').classList.add('show');
+
+  // Reset trim
+  document.getElementById('trimEnabled').checked = false;
+  document.getElementById('trimStart').value = '0:00';
+  document.getElementById('trimStart').disabled = true;
+  document.getElementById('trimEnd').value = '';
+  document.getElementById('trimEnd').disabled = true;
+  document.getElementById('btnSetStart').disabled = true;
+  document.getElementById('btnSetEnd').disabled = true;
+}
+
+function togglePreview() {
+  var audio = document.getElementById('previewAudio');
+  var playBtn = document.getElementById('prevPlayBtn');
+  if (!audio.src) return;
+  if (audio.paused) {
+    audio.play().then(function() {
+      playBtn.textContent = '⏸ 暫停';
+    }).catch(function() {
+      playBtn.textContent = '▶ 播放';
+    });
+  } else {
+    audio.pause();
+    playBtn.textContent = '▶ 播放';
+  }
+}
+
+function stopPreview() {
+  var audio = document.getElementById('previewAudio');
+  if (audio) { audio.pause(); audio.src = ''; }
+  document.getElementById('prevPlayBtn').textContent = '▶ 播放';
+  document.getElementById('prevSeek').value = 0;
+  document.getElementById('prevTimeCur').textContent = '0:00';
+  document.getElementById('prevTimeTot').textContent = '0:00';
+  document.getElementById('previewBox').classList.remove('show');
+  previewAudio = null;
+}
+
+function setTrimFromPlayer(which) {
+  var audio = document.getElementById('previewAudio');
+  var t = audio ? audio.currentTime : 0;
+  if (which === 'start') {
+    document.getElementById('trimStart').value = secsToStr(t);
+  } else {
+    document.getElementById('trimEnd').value = secsToStr(t);
+  }
+  updateDlInfo();
+}
+
+function onTrimToggle() {
+  var enabled = document.getElementById('trimEnabled').checked;
+  document.getElementById('trimStart').disabled = !enabled;
+  document.getElementById('trimEnd').disabled = !enabled;
+  document.getElementById('btnSetStart').disabled = !enabled;
+  document.getElementById('btnSetEnd').disabled = !enabled;
+  updateDlInfo();
+}
+
+function getTrimRange() {
+  if (!document.getElementById('trimEnabled').checked) return null;
+  var start = parseTime(document.getElementById('trimStart').value);
+  var endVal = document.getElementById('trimEnd').value.trim();
+  var end = endVal ? parseTime(endVal) : (videoData ? videoData.duration : 0);
+  if (end <= start) return null;
+  return { start: start, end: end };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FORMAT LIST
+// ═══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  curTab = tab;
+  document.getElementById('tabAudio').classList.toggle('active', tab === 'audio');
+  document.getElementById('tabVideo').classList.toggle('active', tab === 'video');
+  buildFormatList();
+  resetDlState();
+}
+
+function buildFormatList() {
+  if (!videoData) return;
+  var aqRow = document.getElementById('aqFilter');
+  var note = document.getElementById('infoNote');
+  if (curTab === 'audio') {
+    aqRow.style.display = '';
+    buildFmtChips(['m4a', 'mp3', 'opus']);
+    buildAqChips();
+    buildAudioQList();
+    note.style.display = 'none';
+  } else {
+    aqRow.style.display = 'none';
+    buildFmtChips(['mp4']);
+    buildVideoQList();
+  }
+}
+
+function buildFmtChips(formats) {
+  if (formats.indexOf(outFmt) === -1) outFmt = formats[0];
+  var chips = document.getElementById('fmtChips');
+  chips.innerHTML = '';
+  formats.forEach(function(f) {
+    var btn = document.createElement('button');
+    btn.className = 'out-chip' + (f === outFmt ? ' sel' : '');
+    btn.textContent = f.toUpperCase();
+    btn.onclick = function() {
+      outFmt = f;
+      chips.querySelectorAll('.out-chip').forEach(function(c) { c.classList.remove('sel'); });
+      btn.classList.add('sel');
+      updateDlInfo();
+    };
+    chips.appendChild(btn);
+  });
+}
+
+function buildAqChips() {
+  var chips = document.getElementById('aqChips');
+  chips.innerHTML = '';
+  [['all','全部'],['high','高品質'],['aac','AAC'],['opus','Opus']].forEach(function(pair) {
+    var v = pair[0], l = pair[1];
+    var btn = document.createElement('button');
+    btn.className = 'aq-chip' + (aqFilter === v ? ' sel' : '');
+    btn.textContent = l;
+    btn.onclick = function() {
+      aqFilter = v;
+      chips.querySelectorAll('.aq-chip').forEach(function(c) { c.classList.remove('sel'); });
+      btn.classList.add('sel');
+      buildAudioQList();
+    };
+    chips.appendChild(btn);
+  });
+}
+
+function buildAudioQList() {
+  var af = (videoData.audioStreams || []).filter(function(f) { return f.url; });
+  if (aqFilter === 'aac') {
+    af = af.filter(function(f) { return f.mimeType && (f.mimeType.indexOf('mp4') >= 0 || f.mimeType.indexOf('m4a') >= 0); });
+  } else if (aqFilter === 'opus') {
+    af = af.filter(function(f) { return f.mimeType && (f.mimeType.indexOf('webm') >= 0 || f.mimeType.indexOf('opus') >= 0); });
+  } else if (aqFilter === 'high') {
+    af = af.filter(function(f) { return parseInt(f.bitrate) >= 128000; });
+  }
+  af.sort(function(a, b) { return (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0); });
+
+  renderQList(af, function(f) {
+    var br = parseInt(f.bitrate) || 0;
+    var brKbps = br ? Math.round(br / 1000) + ' kbps' : (f.quality || '');
+    var codec = (f.mimeType && (f.mimeType.indexOf('mp4') >= 0 || f.mimeType.indexOf('m4a') >= 0)) ? 'AAC' :
+                (f.mimeType && (f.mimeType.indexOf('webm') >= 0 || f.mimeType.indexOf('opus') >= 0)) ? 'Opus' : '';
+    var size = fmtSize(parseInt(f.contentLength) || 0);
+    var isHigh = br >= 128000;
+    var badge = isHigh ? { cls: 'hd', text: '高品質' } : { cls: 'sd', text: '標準' };
+    return { label: [codec, brKbps].filter(Boolean).join(' '), sub: '', badge: badge, size: size };
+  });
+
+  var note = document.getElementById('infoNote');
+  if (af.length === 0) {
+    note.textContent = '此影片沒有符合條件的音訊格式，請嘗試其他篩選條件。';
+    note.style.display = 'block';
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+function buildVideoQList() {
+  var vf = (videoData.videoStreams || []).filter(function(f) { return f.url && f.videoOnly === false; });
+  vf.sort(function(a, b) { return (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0); });
+
+  renderQList(vf, function(f) {
+    var q = f.quality || '?';
+    var mime = f.mimeType || '';
+    var codec = mime.indexOf('mp4') >= 0 ? 'H.264' : mime.indexOf('webm') >= 0 ? 'VP9' : '';
+    var fps = f.fps ? f.fps + 'fps' : '';
+    var sub = [codec, fps].filter(Boolean).join(' · ');
+    var qNum = parseInt(q);
+    var badge = qNum >= 720 ? { cls: 'hd', text: 'HD' } : { cls: 'sd', text: 'SD' };
+    var size = fmtSize(parseInt(f.contentLength) || 0);
+    return { label: q, sub: sub, badge: badge, size: size };
+  });
+
+  var note = document.getElementById('infoNote');
+  if (vf.length === 0) {
+    note.innerHTML = '此影片沒有含聲的影片格式。<br>YouTube 高畫質影片（720p 以上）的影片和音訊是分開的，純前端無法合併。<br>如需下載音樂，請切換至「音訊」分頁。';
+    note.style.display = 'block';
+  } else {
+    note.innerHTML = '⚠ 含聲影片最高僅提供 360p。如需高畫質，請用「音訊」分頁下載音訊。';
+    note.style.display = 'block';
+  }
+}
+
+function renderQList(fmts, labelFn) {
+  var list = document.getElementById('qList');
+  list.innerHTML = '';
+  selFmt = null;
+  if (!fmts.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:.82rem;padding:10px 0">此影片沒有可用的格式</div>';
+    return;
+  }
+  fmts.forEach(function(f, i) {
+    var info = labelFn(f);
+    var item = document.createElement('div');
+    item.className = 'q-item' + (i === 0 ? ' sel' : '');
+    item.innerHTML =
+      '<div class="q-radio"></div>' +
+      '<div class="q-label"><span>' + escHtml(info.label) + '</span>' +
+        (info.sub ? '<span class="q-sub">' + escHtml(info.sub) + '</span>' : '') +
+      '</div>' +
+      (info.badge ? '<span class="q-badge ' + info.badge.cls + '">' + info.badge.text + '</span>' : '') +
+      (info.size ? '<span class="q-size">' + info.size + '</span>' : '') +
+      '<button class="preview-fmt-btn" onclick="previewThisStream(event,' + i + ')">▶ 試聽</button>';
+    item.onclick = function(e) {
+      if (e.target.classList.contains('preview-fmt-btn')) return;
+      list.querySelectorAll('.q-item').forEach(function(el) { el.classList.remove('sel'); });
+      item.classList.add('sel');
+      selFmt = f;
+      updateDlInfo();
+    };
+    list.appendChild(item);
+    if (i === 0) selFmt = f;
+  });
+  updateDlInfo();
+}
+
+function previewThisStream(e, idx) {
+  e.stopPropagation();
+  if (!videoData) return;
+  var streams;
+  if (curTab === 'audio') {
+    streams = (videoData.audioStreams || []).filter(function(f) { return f.url; });
+    streams.sort(function(a, b) { return (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0); });
+    if (aqFilter === 'aac') streams = streams.filter(function(f) { return f.mimeType && f.mimeType.indexOf('mp4') >= 0; });
+    else if (aqFilter === 'opus') streams = streams.filter(function(f) { return f.mimeType && f.mimeType.indexOf('webm') >= 0; });
+    else if (aqFilter === 'high') streams = streams.filter(function(f) { return parseInt(f.bitrate) >= 128000; });
+  } else {
+    streams = (videoData.videoStreams || []).filter(function(f) { return f.url && f.videoOnly === false; });
+    streams.sort(function(a, b) { return (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0); });
+  }
+  var f = streams[idx];
+  if (!f || !f.url) return;
+  var audio = document.getElementById('previewAudio');
+  audio.pause();
+  audio.src = f.url;
+  audio.volume = parseInt(document.getElementById('prevVol').value) / 100;
+  audio.play().then(function() {
+    document.getElementById('prevPlayBtn').textContent = '⏸ 暫停';
+  }).catch(function() {});
+  document.getElementById('previewBox').classList.add('show');
+  document.getElementById('previewBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DOWNLOAD (SINGLE)
+// ═══════════════════════════════════════════════════════════════
+function updateDlInfo() {
+  var info = document.getElementById('dlInfo');
+  if (!selFmt) { info.textContent = ''; return; }
+  var size = fmtSize(parseInt(selFmt.contentLength) || 0);
+  var parts = [];
+  if (size) parts.push('大小約 ' + size);
+  if (outFmt === 'mp3') parts.push('將轉換為 MP3');
+  var trim = getTrimRange();
+  if (trim) parts.push('剪輯 ' + secsToStr(trim.start) + ' ~ ' + secsToStr(trim.end));
+  info.textContent = parts.join(' · ');
+}
+
+function startDl() {
+  if (downloading || !selFmt) return;
+  if (!currentApi) { showNotice('err', '伺服器未連線，請點「重新偵測」後再試'); return; }
+
+  downloading = true;
+  dlBlob = null;
+  var btn = document.getElementById('btnDl');
+  btn.disabled = true;
+  btn.textContent = '⏳ 準備中...';
+  document.getElementById('btnSave').style.display = 'none';
+  showProg(true);
+  setProg(0, '正在連線...');
+  hideNotice();
+
+  var streamUrl = selFmt.url;
+  var trim = getTrimRange();
+
+  fetch(streamUrl, { signal: makeSignal(300000) })
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('下載失敗 (HTTP ' + resp.status + ')');
+      var total = parseInt(resp.headers.get('content-length') || '0');
+      var reader = resp.body.getReader();
+      var chunks = [];
+      var received = 0;
+      function pump() {
+        return reader.read().then(function(result) {
+          if (result.done) return chunks;
+          chunks.push(result.value);
+          received += result.value.length;
+          if (total) {
+            setProg(Math.round(received / total * 70), '下載中 ' + Math.round(received / total * 100) + '% (' + fmtSize(received) + ' / ' + fmtSize(total) + ')');
+          } else {
+            setProg(30, '下載中 ' + fmtSize(received) + '...');
+          }
+          return pump();
+        });
+      }
+      return pump().then(function(chunks) {
+        var rawData = new Uint8Array(received);
+        var offset = 0;
+        chunks.forEach(function(chunk) { rawData.set(chunk, offset); offset += chunk.length; });
+        return rawData;
+      });
+    })
+    .then(function(rawData) {
+      setProg(72, '處理中...');
+      if (trim && curTab === 'audio') {
+        setProg(74, '剪輯中...');
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx.decodeAudioData(rawData.buffer.slice(0))
+          .then(function(decoded) {
+            var trimmed = trimAudioBuffer(decoded, trim.start, trim.end);
+            audioCtx.close();
+            if (outFmt === 'mp3') {
+              setProg(80, 'MP3 編碼中...');
+              var mp3Data = encodeToMp3(trimmed);
+              return { data: mp3Data, mime: 'audio/mpeg', ext: 'mp3' };
+            } else {
+              setProg(80, '封裝中...');
+              var wavData = audioBufferToWav(trimmed);
+              return { data: wavData, mime: 'audio/wav', ext: 'wav' };
+            }
+          });
+      } else if (outFmt === 'mp3') {
+        setProg(75, 'MP3 轉換中...');
+        var audioCtx2 = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx2.decodeAudioData(rawData.buffer.slice(0))
+          .then(function(decoded) {
+            setProg(82, 'MP3 編碼中...');
+            var mp3Data = encodeToMp3(decoded);
+            audioCtx2.close();
+            return { data: mp3Data, mime: 'audio/mpeg', ext: 'mp3' };
+          });
+      } else {
+        var mimeMap = { mp4: 'video/mp4', m4a: 'audio/mp4', opus: 'audio/ogg', webm: 'video/webm' };
+        return { data: rawData, mime: mimeMap[outFmt] || 'application/octet-stream', ext: outFmt };
+      }
+    })
+    .then(function(result) {
+      setProg(100, '完成！');
+      dlBlob = new Blob([result.data], { type: result.mime });
+      var titlePart = sanitizeFilename(videoData.title || 'video');
+      var trim2 = getTrimRange();
+      var trimSuffix = trim2 ? ('_' + secsToStr(trim2.start).replace(/:/g,'m') + '-' + secsToStr(trim2.end).replace(/:/g,'m')) : '';
+      dlFilename = titlePart + trimSuffix + '.' + result.ext;
+      btn.textContent = '✓ 完成！';
+      var saveBtn = document.getElementById('btnSave');
+      saveBtn.textContent = '⇓ 儲存 ' + dlFilename;
+      saveBtn.style.display = '';
+      triggerSave();
+      updateHistoryFmt(videoData._vid, result.ext);
+    })
+    .catch(function(e) {
+      showNotice('err', '下載失敗：' + (e.message || '未知錯誤') + '。請重試或換其他格式。');
+      btn.textContent = '⬇ 下載';
+      setProg(0, '');
+      showProg(false);
+    })
+    .then(function() { downloading = false; btn.disabled = false; });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUDIO TRIM (Web Audio API)
+// ═══════════════════════════════════════════════════════════════
+function trimAudioBuffer(buffer, startSec, endSec) {
+  var sr = buffer.sampleRate;
+  var startSample = Math.floor(startSec * sr);
+  var endSample = Math.min(Math.ceil(endSec * sr), buffer.length);
+  var length = endSample - startSample;
+  if (length <= 0) return buffer;
+  var newBuf = new AudioBuffer ? null : null; // fallback below
+  // Use OfflineAudioContext to create new buffer
+  var offCtx = new OfflineAudioContext(buffer.numberOfChannels, length, sr);
+  var newBuffer = offCtx.createBuffer(buffer.numberOfChannels, length, sr);
+  for (var ch = 0; ch < buffer.numberOfChannels; ch++) {
+    var src = buffer.getChannelData(ch);
+    var dst = newBuffer.getChannelData(ch);
+    for (var i = 0; i < length; i++) {
+      dst[i] = src[startSample + i];
+    }
+  }
+  return newBuffer;
+}
+
+function audioBufferToWav(buffer) {
+  var numChannels = buffer.numberOfChannels;
+  var sampleRate = buffer.sampleRate;
+  var length = buffer.length;
+  var wavBuffer = new ArrayBuffer(44 + length * numChannels * 2);
+  var view = new DataView(wavBuffer);
+  function writeStr(offset, str) {
+    for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + length * numChannels * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, length * numChannels * 2, true);
+  var offset = 44;
+  for (var i = 0; i < length; i++) {
+    for (var ch = 0; ch < numChannels; ch++) {
+      var sample = buffer.getChannelData(ch)[i];
+      sample = Math.max(-1, Math.min(1, sample));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+  return new Uint8Array(wavBuffer);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MP3 ENCODING (lamejs)
+// ═══════════════════════════════════════════════════════════════
+function encodeToMp3(audioBuffer) {
+  if (typeof lamejs === 'undefined') throw new Error('MP3 編碼器未載入，請檢查網路連線');
+  var channels = audioBuffer.numberOfChannels;
+  var sampleRate = audioBuffer.sampleRate;
+  var mp3enc = new lamejs.Mp3Encoder(channels > 1 ? 2 : 1, sampleRate, 320);
+  var mp3Data = [];
+  var BLOCK = 1152;
+  var left = float32ToInt16(audioBuffer.getChannelData(0));
+  var right = channels > 1 ? float32ToInt16(audioBuffer.getChannelData(1)) : left;
+  for (var i = 0; i < left.length; i += BLOCK) {
+    var l = left.subarray(i, i + BLOCK);
+    var r = right.subarray(i, i + BLOCK);
+    var buf = channels > 1 ? mp3enc.encodeBuffer(l, r) : mp3enc.encodeBuffer(l);
+    if (buf.length > 0) mp3Data.push(new Int8Array(buf));
+  }
+  var end = mp3enc.flush();
+  if (end.length > 0) mp3Data.push(new Int8Array(end));
+  var totalLen = mp3Data.reduce(function(s, b) { return s + b.length; }, 0);
+  var result = new Uint8Array(totalLen);
+  var pos = 0;
+  mp3Data.forEach(function(b) { result.set(b, pos); pos += b.length; });
+  return result;
+}
+
+function float32ToInt16(f32) {
+  var i16 = new Int16Array(f32.length);
+  for (var i = 0; i < f32.length; i++) {
+    var s = Math.max(-1, Math.min(1, f32[i]));
+    i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  return i16;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SAVE
+// ═══════════════════════════════════════════════════════════════
+function triggerSave() {
+  if (!dlBlob) return;
+  var url = URL.createObjectURL(dlBlob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = dlFilename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PROGRESS
+// ═══════════════════════════════════════════════════════════════
+function showProg(show) { document.getElementById('progWrap').classList.toggle('show', show); }
+function setProg(pct, txt) {
+  var bar = document.getElementById('progBar');
+  bar.style.width = pct + '%';
+  bar.className = 'prog-bar' + (pct > 72 && pct < 100 ? ' cvt' : '');
+  document.getElementById('progTxt').textContent = txt;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BATCH DOWNLOAD
+// ═══════════════════════════════════════════════════════════════
+function buildBatchFmtChips() {
+  var chips = document.getElementById('batchFmtChips');
+  chips.innerHTML = '';
+  ['m4a', 'mp3', 'opus', 'mp4'].forEach(function(f) {
+    var btn = document.createElement('button');
+    btn.className = 'out-chip' + (f === batchOutFmt ? ' sel' : '');
+    btn.textContent = f.toUpperCase();
+    btn.onclick = function() {
+      batchOutFmt = f;
+      chips.querySelectorAll('.out-chip').forEach(function(c) { c.classList.remove('sel'); });
+      btn.classList.add('sel');
+      batchQueue.forEach(function(item) {
+        if (item.status === 'ready' || item.status === 'pending') item.outFmt = batchOutFmt;
+      });
+      renderBatchQueue();
+    };
+    chips.appendChild(btn);
+  });
+}
+
+function batchAnalyze() {
+  if (!currentApi) { showBatchNotice('warn', '伺服器尚未就緒，請稍候再試'); return; }
+  var raw = document.getElementById('batchUrls').value;
+  var lines = raw.split('\n');
+  var urls = [];
+  lines.forEach(function(line) {
+    line = line.trim();
+    if (line) urls.push(line);
+  });
+  if (!urls.length) { showBatchNotice('err', '請輸入至少一個 YouTube 連結'); return; }
+  if (urls.length > 20) { showBatchNotice('warn', '最多支援 20 個連結，已截取前 20 個'); urls = urls.slice(0, 20); }
+
+  hideBatchNotice();
+  batchQueue = [];
+  urls.forEach(function(url) {
+    var vid = extractVideoId(url);
+    batchQueue.push({
+      url: url, vid: vid,
+      status: vid ? 'pending' : 'error',
+      errMsg: vid ? '' : '無法識別影片 ID',
+      data: null, outFmt: batchOutFmt, progress: 0, blob: null, filename: ''
+    });
+  });
+
+  document.getElementById('batchFmtBar').style.display = '';
+  buildBatchFmtChips();
+  renderBatchQueue();
+
+  var pendingItems = batchQueue.filter(function(item) { return item.status === 'pending'; });
+  var idx = 0;
+  function analyzeNext() {
+    if (idx >= pendingItems.length) return;
+    var item = pendingItems[idx++];
+    item.status = 'analyzing';
+    renderBatchQueue();
+    fetch(currentApi + '/streams/' + item.vid, { signal: makeSignal(15000), headers: { 'Accept': 'application/json' } })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(d) {
+        if (!d || !d.title) throw new Error('無效回應');
+        item.data = d; item.data._vid = item.vid; item.status = 'ready';
+        renderBatchQueue(); analyzeNext();
+      })
+      .catch(function(e) {
+        item.status = 'error'; item.errMsg = e.message || '解析失敗';
+        renderBatchQueue(); analyzeNext();
+      });
+  }
+  analyzeNext(); analyzeNext(); analyzeNext();
+}
+
+function renderBatchQueue() {
+  var container = document.getElementById('batchQueue');
+  container.innerHTML = '';
+  batchQueue.forEach(function(item, i) {
+    var div = document.createElement('div');
+    div.className = 'bq-item';
+    var statusText = { pending: '等待中', analyzing: '解析中...', ready: '就緒', downloading: '下載中', done: '完成', error: '失敗' };
+    var thumb = item.data ? escHtml(item.data.thumbnailUrl || '') : '';
+    var title = item.data ? escHtml(item.data.title || item.url) : escHtml(item.url);
+    var sub = item.data ? escHtml([item.data.uploader, fmtDur(item.data.duration)].filter(Boolean).join(' · ')) : (item.errMsg ? escHtml(item.errMsg) : '');
+    div.innerHTML =
+      '<div class="bq-header">' +
+        (thumb ? '<img class="bq-thumb" src="' + thumb + '" alt="" onerror="this.style.display=\'none\'">' : '<div class="bq-thumb"></div>') +
+        '<div class="bq-info"><div class="bq-title">' + title + '</div><div class="bq-sub">' + sub + '</div></div>' +
+        '<span class="bq-status ' + item.status + '">' + (statusText[item.status] || item.status) + (item.status === 'downloading' ? ' ' + item.progress + '%' : '') + '</span>' +
+        (item.status !== 'downloading' && item.status !== 'done' ? '<button class="bq-remove" onclick="batchRemove(' + i + ')">✕</button>' : '') +
+      '</div>' +
+      '<div class="bq-prog' + (item.status === 'downloading' ? ' show' : '') + '"><div class="bq-prog-bar" style="width:' + item.progress + '%"></div></div>';
+    container.appendChild(div);
+  });
+}
+
+function batchRemove(i) {
+  batchQueue.splice(i, 1);
+  renderBatchQueue();
+  if (!batchQueue.length) document.getElementById('batchFmtBar').style.display = 'none';
+}
+
+function batchStartAll() {
+  var readyItems = batchQueue.filter(function(item) { return item.status === 'ready'; });
+  if (!readyItems.length) { showBatchNotice('warn', '沒有就緒的項目可以下載'); return; }
+  hideBatchNotice();
+  batchRunning = true;
+  document.getElementById('btnBatchDl').disabled = true;
+  batchDownloadNext(readyItems, 0);
+}
+
+function batchDownloadNext(items, idx) {
+  if (idx >= items.length) {
+    batchRunning = false;
+    document.getElementById('btnBatchDl').disabled = false;
+    showBatchNotice('ok', '全部下載完成！');
+    return;
+  }
+  var item = items[idx];
+  item.status = 'downloading'; item.progress = 0;
+  renderBatchQueue();
+
+  var stream = null;
+  var fmt = item.outFmt || batchOutFmt;
+  if (fmt === 'mp4') {
+    var vf = (item.data.videoStreams || []).filter(function(f) { return f.url && f.videoOnly === false; });
+    vf.sort(function(a, b) { return (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0); });
+    stream = vf[0] || null;
+  } else {
+    var af = (item.data.audioStreams || []).filter(function(f) { return f.url; });
+    af.sort(function(a, b) { return (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0); });
+    stream = af[0] || null;
+  }
+
+  if (!stream) {
+    item.status = 'error'; item.errMsg = '找不到可用串流';
+    renderBatchQueue(); batchDownloadNext(items, idx + 1);
+    return;
+  }
+
+  fetch(stream.url, { signal: makeSignal(300000) })
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var total = parseInt(resp.headers.get('content-length') || '0');
+      var reader = resp.body.getReader();
+      var chunks = []; var received = 0;
+      function pump() {
+        return reader.read().then(function(result) {
+          if (result.done) return chunks;
+          chunks.push(result.value); received += result.value.length;
+          item.progress = total ? Math.round(received / total * 100) : 50;
+          renderBatchQueue(); return pump();
+        });
+      }
+      return pump().then(function(chunks) {
+        var rawData = new Uint8Array(received); var offset = 0;
+        chunks.forEach(function(chunk) { rawData.set(chunk, offset); offset += chunk.length; });
+        return rawData;
+      });
+    })
+    .then(function(rawData) {
+      if (fmt === 'mp3') {
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx.decodeAudioData(rawData.buffer.slice(0))
+          .then(function(decoded) {
+            var mp3Data = encodeToMp3(decoded); audioCtx.close();
+            return { data: mp3Data, mime: 'audio/mpeg', ext: 'mp3' };
+          });
+      } else {
+        var mimeMap = { mp4: 'video/mp4', m4a: 'audio/mp4', opus: 'audio/ogg', webm: 'video/webm' };
+        return { data: rawData, mime: mimeMap[fmt] || 'application/octet-stream', ext: fmt };
+      }
+    })
+    .then(function(result) {
+      item.progress = 100; item.status = 'done';
+      item.blob = new Blob([result.data], { type: result.mime });
+      item.filename = sanitizeFilename(item.data.title || item.vid) + '.' + result.ext;
+      renderBatchQueue();
+      var url = URL.createObjectURL(item.blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = item.filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+      addHistory({ vid: item.vid, title: item.data.title, author: item.data.uploader, thumb: item.data.thumbnailUrl || '', dur: item.data.duration });
+      setTimeout(function() { batchDownloadNext(items, idx + 1); }, 800);
+    })
+    .catch(function(e) {
+      item.status = 'error'; item.errMsg = e.message || '下載失敗';
+      renderBatchQueue(); batchDownloadNext(items, idx + 1);
+    });
+}
+
+function showBatchNotice(type, msg) {
+  var el = document.getElementById('batchNotice');
+  el.className = 'notice show ' + type; el.textContent = msg;
+}
+function hideBatchNotice() { document.getElementById('batchNotice').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════════════════════
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem('ytdown_hist') || '[]'); } catch(e) { return []; }
+}
+function saveHistory(h) {
+  try { localStorage.setItem('ytdown_hist', JSON.stringify(h)); } catch(e) {}
+}
+function addHistory(item) {
+  var h = loadHistory().filter(function(x) { return x.vid !== item.vid; });
+  h.unshift({ vid: item.vid, title: item.title, author: item.author, thumb: item.thumb, dur: item.dur, ts: Date.now() });
+  saveHistory(h.slice(0, 30));
+  renderHistory();
+}
+function updateHistoryFmt(vid, fmt) {
+  var h = loadHistory();
+  for (var ii = 0; ii < h.length; ii++) {
+    if (h[ii].vid === vid) { h[ii].lastFmt = fmt; saveHistory(h); break; }
+  }
+}
+function renderHistory() {
+  var h = loadHistory();
+  document.getElementById('histCount').textContent = h.length + ' 筆';
+  var list = document.getElementById('histList');
+  if (!h.length) { list.innerHTML = '<div class="hist-empty">尚無下載紀錄</div>'; return; }
+  list.innerHTML = h.map(function(item, i) {
+    return '<div class="hist-item" onclick="loadHistItem(' + i + ')">' +
+      '<img class="hist-thumb" src="' + escHtml(item.thumb || '') + '" alt="" onerror="this.style.display=\'none\'">' +
+      '<div class="hist-info">' +
+        '<div class="hist-ttl">' + escHtml(item.title || item.vid) + '</div>' +
+        '<div class="hist-sub">' + escHtml(item.author || '') + (item.lastFmt ? ' · ' + item.lastFmt.toUpperCase() : '') + '</div>' +
+      '</div>' +
+      '<button class="hist-del" onclick="delHist(event,' + i + ')" title="刪除">✕</button>' +
+    '</div>';
+  }).join('');
+}
+function loadHistItem(i) {
+  var h = loadHistory();
+  if (!h[i]) return;
+  switchMode('single');
+  document.getElementById('url').value = 'https://www.youtube.com/watch?v=' + h[i].vid;
+  analyze();
+}
+function delHist(e, i) {
+  e.stopPropagation();
+  var h = loadHistory(); h.splice(i, 1); saveHistory(h); renderHistory();
+}
+function toggleHist() {
+  var list = document.getElementById('histList');
+  var open = list.classList.toggle('open');
+  document.getElementById('histToggle').textContent = open ? '▲' : '▼';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+function showNotice(type, msg) {
+  var el = document.getElementById('notice');
+  el.className = 'notice show ' + type; el.textContent = msg;
+}
+function hideNotice() { document.getElementById('notice').classList.remove('show'); }
+
+function hideResults() {
+  ['infoCard', 'fmtBox', 'dlBox'].forEach(function(id) {
+    document.getElementById(id).classList.remove('show');
+  });
+  document.getElementById('previewBox').classList.remove('show');
+}
+
+function resetDlState() {
+  dlBlob = null;
+  var btn = document.getElementById('btnDl');
+  btn.disabled = false; btn.textContent = '⬇ 下載';
+  document.getElementById('btnSave').style.display = 'none';
+  showProg(false); setProg(0, '');
+  updateDlInfo();
+}
+
+function pasteFn() {
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    navigator.clipboard.readText()
+      .then(function(t) { document.getElementById('url').value = t; })
+      .catch(function() { showNotice('warn', '無法存取剪貼簿，請手動長按貼上'); });
+  } else {
+    showNotice('warn', '請手動長按輸入框貼上連結');
+  }
+}
+
+function clearFn() {
+  document.getElementById('url').value = '';
+  hideResults(); hideNotice(); stopPreview();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('url').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') analyze();
+});
+['trimStart','trimEnd'].forEach(function(id) {
+  document.getElementById(id).addEventListener('input', function() { updateDlInfo(); });
+});
+
+detectInstance();
+renderHistory();
+</script>
+</body>
+</html>
