@@ -374,9 +374,6 @@ var previewAudio  = null;
 var batchQueue    = [];
 var batchRunning  = false;
 var batchOutFmt   = 'm4a';
-var proxyAlive    = false;
-var proxyUrl      = '';
-var CORS_WORKER   = 'https://mute-smoke-da30.so64134022.workers.dev';
 
 // Piped API instances — ordered by reliability
 var PIPED_APIS = [
@@ -399,34 +396,6 @@ var PIPED_APIS = [
 ];
 
 var TEST_VID = '9bZkp7q19f0'; // PSY Gangnam Style
-
-// ═══════════════════════════════════════════════════════════════
-//  URL REWRITING: Convert Piped proxy URLs to direct YouTube CDN URLs
-// ═══════════════════════════════════════════════════════════════
-function toDirectUrl(proxyUrlStr) {
-  if (!proxyUrlStr) return proxyUrlStr;
-  try {
-    var u = new URL(proxyUrlStr);
-    var host = u.searchParams.get('host');
-    if (host && u.pathname === '/videoplayback') {
-      u.hostname = host;
-      u.port = '';
-      return u.toString();
-    }
-  } catch (e) {}
-  return proxyUrlStr;
-}
-
-function rewriteStreamUrls(data) {
-  var streams = (data.audioStreams || []).concat(data.videoStreams || []);
-  streams.forEach(function(s) {
-    if (s.url) {
-      s._proxyUrl = s.url;
-      s.url = toDirectUrl(s.url);
-    }
-  });
-  return data;
-}
 
 // ═══════════════════════════════════════════════════════════════
 //  COMPAT
@@ -493,10 +462,7 @@ function tryNextApi(apis, idx) {
       if (d && d.title) {
         currentApi = api;
         currentApiIdx = idx;
-        proxyUrl = d.proxyUrl || '';
         setInstStatus('ok', '伺服器就緒 · ' + api.replace('https://', ''));
-        // Always check our CORS Worker
-        checkProxy(CORS_WORKER);
       } else {
         throw new Error('無效回應');
       }
@@ -504,32 +470,6 @@ function tryNextApi(apis, idx) {
     .catch(function() {
       tryNextApi(apis, idx + 1);
     });
-}
-
-function checkProxy(pUrl) {
-  // Check our own CORS Worker instead of Piped proxy
-  fetch(CORS_WORKER + '/', { method: 'GET', signal: makeSignal(15000) })
-    .then(function(r) {
-      proxyAlive = (r.status === 400 || r.status === 200);
-      updateProxyStatus();
-    })
-    .catch(function() {
-      proxyAlive = false;
-      updateProxyStatus();
-    });
-}
-
-function updateProxyStatus() {
-  var txt = document.getElementById('instTxt').textContent;
-  if (proxyAlive) {
-    if (txt.indexOf('代理就緒') < 0) {
-      document.getElementById('instTxt').textContent = txt + ' · 代理就緒';
-    }
-  } else {
-    if (txt.indexOf('直連') < 0) {
-      document.getElementById('instTxt').textContent = txt + ' · 直連模式';
-    }
-  }
 }
 
 function retryDetect() {
@@ -614,32 +554,50 @@ function secsToStr(secs) {
 //  FETCH REAL FILE SIZES
 // ═══════════════════════════════════════════════════════════════
 function fetchRealSizes(data) {
-  // Use CORS Worker to do HEAD requests for real sizes
-  if (!proxyAlive) {
-    // Fallback: just use API-provided sizes
+  var allStreams = (data.audioStreams || []).concat(data.videoStreams || []);
+  var pending = allStreams.filter(function(f) { return f.url; });
+  if (!pending.length) return;
+
+  // Batch HEAD requests, max 4 concurrent
+  var queue = pending.slice();
+  var active = 0;
+  var maxConcurrent = 4;
+  var total = queue.length;
+  var done = 0;
+
+  function onAllDone() {
+    // Re-render the current tab's format list so sizes are updated
     if (videoData) {
       if (curTab === 'audio') buildAudioQList();
       else buildVideoQList();
     }
-    return;
   }
-  var streams = (data.audioStreams || []).concat(data.videoStreams || []);
-  var pending = streams.filter(function(s) { return s.url && !parseInt(s.contentLength); });
-  if (pending.length === 0) {
-    if (videoData) {
-      if (curTab === 'audio') buildAudioQList();
-      else buildVideoQList();
+
+  function next() {
+    if (!queue.length) {
+      if (active === 0) onAllDone();
+      return;
     }
-    return;
-  }
-  pending.forEach(function(s) {
-    fetch(CORS_WORKER + '/?url=' + encodeURIComponent(s.url), { method: 'HEAD', signal: makeSignal(8000) })
+    if (active >= maxConcurrent) return;
+    active++;
+    var f = queue.shift();
+    fetch(f.url, { method: 'HEAD', signal: makeSignal(8000) })
       .then(function(r) {
         var cl = r.headers.get('content-length');
-        if (cl) { s.contentLength = cl; updateStreamSizeInDom(s); }
+        if (cl && parseInt(cl) > 0) {
+          f.contentLength = cl;
+        }
       })
-      .catch(function() {});
-  });
+      .catch(function() {})
+      .then(function() {
+        active--;
+        done++;
+        if (done >= total) onAllDone();
+        else next();
+      });
+    next(); // kick off next immediately if under limit
+  }
+  next();
 }
 
 function updateStreamSizeInDom(f) {
@@ -694,7 +652,6 @@ function analyze() {
     })
     .then(function(data) {
       if (!data) throw new Error('所有伺服器均無法解析此影片，請稍後再試');
-      data = rewriteStreamUrls(data);
       videoData = data;
       videoData._vid = vid;
       showVideoInfo(videoData);
@@ -808,7 +765,7 @@ function initPreview() {
   if (!af.length) return;
 
   var audio = document.getElementById('previewAudio');
-  audio.src = proxyAlive ? (CORS_WORKER + '/?url=' + encodeURIComponent(af[0].url)) : af[0].url;
+  audio.src = af[0].url;
   audio.volume = 0.8;
   previewAudio = audio;
 
@@ -1093,7 +1050,7 @@ function previewThisStream(e, idx) {
   if (!f || !f.url) return;
   var audio = document.getElementById('previewAudio');
   audio.pause();
-  audio.src = proxyAlive ? (CORS_WORKER + '/?url=' + encodeURIComponent(f.url)) : f.url;
+  audio.src = f.url;
   audio.volume = parseInt(document.getElementById('prevVol').value) / 100;
   audio.play().then(function() {
     document.getElementById('prevPlayBtn').textContent = '⏸ 暫停';
@@ -1122,46 +1079,6 @@ function startDl() {
   if (downloading || !selFmt) return;
   if (!currentApi) { showNotice('err', '伺服器未連線，請點「重新偵測」後再試'); return; }
 
-  var streamUrl = selFmt.url;
-  var trim = getTrimRange();
-  var needsProcessing = (outFmt === 'mp3') || (trim && curTab === 'audio');
-
-  // If processing is needed (MP3 convert or trim), need proxy
-  if (needsProcessing) {
-    if (!proxyAlive) {
-      showNotice('warn', 'MP3 轉換及剪輯功能目前無法使用（代理伺服器離線）。請改用 M4A 或 Opus 格式直接下載。');
-      return;
-    }
-    var fetchUrl = CORS_WORKER + '/?url=' + encodeURIComponent(streamUrl);
-    startDlWithFetch(fetchUrl, trim);
-    return;
-  }
-
-  // Use CORS Worker for all downloads (enables proper file download)
-  if (proxyAlive) {
-    var titlePart = sanitizeFilename(videoData.title || 'video');
-    var ext = outFmt;
-    var fname = titlePart + '.' + ext;
-    var workerUrl = CORS_WORKER + '/?url=' + encodeURIComponent(streamUrl) + '&filename=' + encodeURIComponent(fname);
-    startDlWithFetch(workerUrl, null);
-  } else {
-    // Fallback: open URL in new tab
-    downloading = true;
-    var btn = document.getElementById('btnDl');
-    btn.disabled = true;
-    btn.textContent = '⬇ 開始下載...';
-    hideNotice();
-    var dlWin = window.open(streamUrl, '_blank');
-    if (!dlWin) { window.location.href = streamUrl; }
-    var ext2 = outFmt;
-    showNotice('ok', '下載已在新分頁開始！如瀏覽器直接播放音訊，請點右上角「⋮」選擇「下載」。');
-    btn.textContent = '✓ 已開啟下載';
-    updateHistoryFmt(videoData._vid, ext2);
-    setTimeout(function() { downloading = false; btn.disabled = false; btn.textContent = '⬇ 下載'; }, 3000);
-  }
-}
-
-function startDlWithFetch(fetchUrl, trim) {
   downloading = true;
   dlBlob = null;
   var btn = document.getElementById('btnDl');
@@ -1172,7 +1089,10 @@ function startDlWithFetch(fetchUrl, trim) {
   setProg(0, '正在連線...');
   hideNotice();
 
-  fetch(fetchUrl, { signal: makeSignal(300000) })
+  var streamUrl = selFmt.url;
+  var trim = getTrimRange();
+
+  fetch(streamUrl, { signal: makeSignal(300000) })
     .then(function(resp) {
       if (!resp.ok) throw new Error('下載失敗 (HTTP ' + resp.status + ')');
       var total = parseInt(resp.headers.get('content-length') || '0');
@@ -1248,12 +1168,7 @@ function startDlWithFetch(fetchUrl, trim) {
       updateHistoryFmt(videoData._vid, result.ext);
     })
     .catch(function(e) {
-      var msg = e.message || '未知錯誤';
-      if (msg.indexOf('CORS') >= 0 || msg.indexOf('NetworkError') >= 0 || msg.indexOf('Failed to fetch') >= 0) {
-        showNotice('err', 'MP3 轉換/剪輯需要代理服務，但代理目前無法使用。請改用 M4A 或 Opus 格式直接下載。');
-      } else {
-        showNotice('err', '下載失敗：' + msg + '。請重試或換其他格式。');
-      }
+      showNotice('err', '下載失敗：' + (e.message || '未知錯誤') + '。請重試或換其他格式。');
       btn.textContent = '⬇ 下載';
       setProg(0, '');
       showProg(false);
@@ -1442,7 +1357,7 @@ function batchAnalyze() {
       .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(d) {
         if (!d || !d.title) throw new Error('無效回應');
-        item.data = rewriteStreamUrls(d); item.data._vid = item.vid; item.status = 'ready';
+        item.data = d; item.data._vid = item.vid; item.status = 'ready';
         renderBatchQueue(); analyzeNext();
       })
       .catch(function(e) {
@@ -1519,99 +1434,56 @@ function batchDownloadNext(items, idx) {
     return;
   }
 
-  // For MP3 format, try fetch via proxy (if alive); otherwise skip
-  var needsFetch = (fmt === 'mp3');
-
-  if (needsFetch && !proxyAlive) {
-    item.status = 'error'; item.errMsg = 'MP3 轉換需要代理服務（目前離線），請改用 M4A 格式';
-    renderBatchQueue(); batchDownloadNext(items, idx + 1);
-    return;
-  }
-
-  if (needsFetch) {
-    var fetchUrl = CORS_WORKER + '/?url=' + encodeURIComponent(stream.url);
-    fetch(fetchUrl, { signal: makeSignal(300000) })
-      .then(function(resp) {
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        var total = parseInt(resp.headers.get('content-length') || '0');
-        var reader = resp.body.getReader();
-        var chunks = []; var received = 0;
-        function pump() {
-          return reader.read().then(function(result) {
-            if (result.done) return chunks;
-            chunks.push(result.value); received += result.value.length;
-            item.progress = total ? Math.round(received / total * 100) : 50;
-            renderBatchQueue(); return pump();
-          });
-        }
-        return pump().then(function(chunks) {
-          var rawData = new Uint8Array(received); var offset = 0;
-          chunks.forEach(function(chunk) { rawData.set(chunk, offset); offset += chunk.length; });
-          return rawData;
+  fetch(stream.url, { signal: makeSignal(300000) })
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var total = parseInt(resp.headers.get('content-length') || '0');
+      var reader = resp.body.getReader();
+      var chunks = []; var received = 0;
+      function pump() {
+        return reader.read().then(function(result) {
+          if (result.done) return chunks;
+          chunks.push(result.value); received += result.value.length;
+          item.progress = total ? Math.round(received / total * 100) : 50;
+          renderBatchQueue(); return pump();
         });
-      })
-      .then(function(rawData) {
+      }
+      return pump().then(function(chunks) {
+        var rawData = new Uint8Array(received); var offset = 0;
+        chunks.forEach(function(chunk) { rawData.set(chunk, offset); offset += chunk.length; });
+        return rawData;
+      });
+    })
+    .then(function(rawData) {
+      if (fmt === 'mp3') {
         var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         return audioCtx.decodeAudioData(rawData.buffer.slice(0))
           .then(function(decoded) {
             var mp3Data = encodeToMp3(decoded); audioCtx.close();
             return { data: mp3Data, mime: 'audio/mpeg', ext: 'mp3' };
           });
-      })
-      .then(function(result) {
-        item.progress = 100; item.status = 'done';
-        item.blob = new Blob([result.data], { type: result.mime });
-        item.filename = sanitizeFilename(item.data.title || item.vid) + '.' + result.ext;
-        renderBatchQueue();
-        var url = URL.createObjectURL(item.blob);
-        var a = document.createElement('a');
-        a.href = url; a.download = item.filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
-        addHistory({ vid: item.vid, title: item.data.title, author: item.data.uploader, thumb: item.data.thumbnailUrl || '', dur: item.data.duration });
-        setTimeout(function() { batchDownloadNext(items, idx + 1); }, 800);
-      })
-      .catch(function(e) {
-        item.status = 'error'; item.errMsg = (e.message || '下載失敗') + '（MP3 需要代理，請改用 M4A）';
-        renderBatchQueue(); batchDownloadNext(items, idx + 1);
-      });
-  } else {
-    // Use CORS Worker for proper download
-    var batchFname = sanitizeFilename(item.data.title || item.vid) + '.' + fmt;
-    var batchFetchUrl = proxyAlive
-      ? CORS_WORKER + '/?url=' + encodeURIComponent(stream.url) + '&filename=' + encodeURIComponent(batchFname)
-      : stream.url;
-    if (proxyAlive) {
-      fetch(batchFetchUrl, { signal: makeSignal(300000) })
-        .then(function(resp) {
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          return resp.blob();
-        })
-        .then(function(blob) {
-          item.progress = 100; item.status = 'done';
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url; a.download = batchFname;
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
-          renderBatchQueue();
-          addHistory({ vid: item.vid, title: item.data.title, author: item.data.uploader, thumb: item.data.thumbnailUrl || '', dur: item.data.duration });
-          setTimeout(function() { batchDownloadNext(items, idx + 1); }, 800);
-        })
-        .catch(function(e) {
-          item.status = 'error'; item.errMsg = e.message || '下載失敗';
-          renderBatchQueue(); batchDownloadNext(items, idx + 1);
-        });
-    } else {
-      var a = document.createElement('a');
-      a.href = stream.url; a.target = '_blank'; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else {
+        var mimeMap = { mp4: 'video/mp4', m4a: 'audio/mp4', opus: 'audio/ogg', webm: 'video/webm' };
+        return { data: rawData, mime: mimeMap[fmt] || 'application/octet-stream', ext: fmt };
+      }
+    })
+    .then(function(result) {
       item.progress = 100; item.status = 'done';
+      item.blob = new Blob([result.data], { type: result.mime });
+      item.filename = sanitizeFilename(item.data.title || item.vid) + '.' + result.ext;
       renderBatchQueue();
+      var url = URL.createObjectURL(item.blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = item.filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
       addHistory({ vid: item.vid, title: item.data.title, author: item.data.uploader, thumb: item.data.thumbnailUrl || '', dur: item.data.duration });
-      setTimeout(function() { batchDownloadNext(items, idx + 1); }, 1500);
-    }
-  }
+      setTimeout(function() { batchDownloadNext(items, idx + 1); }, 800);
+    })
+    .catch(function(e) {
+      item.status = 'error'; item.errMsg = e.message || '下載失敗';
+      renderBatchQueue(); batchDownloadNext(items, idx + 1);
+    });
 }
 
 function showBatchNotice(type, msg) {
