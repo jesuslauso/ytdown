@@ -1090,6 +1090,48 @@ function updateDlInfo() {
   info.textContent = parts.join(' · ');
 }
 
+// Chunked download using Range requests to avoid Worker timeout
+function chunkedDownload(url, totalSize, btn) {
+  var CHUNK = 512 * 1024; // 512KB per chunk
+  var chunks = [];
+  var offset = 0;
+  var retries = 0;
+  var MAX_RETRIES = 3;
+
+  function downloadChunk() {
+    var end = Math.min(offset + CHUNK - 1, totalSize - 1);
+    btn.textContent = '\u2b07 ' + Math.round(offset / totalSize * 100) + '%';
+
+    return fetch(url, {
+      headers: { 'Range': 'bytes=' + offset + '-' + end },
+      signal: makeSignal(25000)
+    }).then(function(resp) {
+      if (resp.status !== 206 && resp.status !== 200) {
+        throw new Error('HTTP ' + resp.status);
+      }
+      return resp.arrayBuffer();
+    }).then(function(buf) {
+      chunks.push(new Uint8Array(buf));
+      offset += buf.byteLength;
+      retries = 0;
+      if (offset >= totalSize) {
+        btn.textContent = '\u2b07 100%';
+        return new Blob(chunks, { type: selFmt.mimeType || 'audio/mp4' });
+      }
+      return downloadChunk();
+    }).catch(function(err) {
+      retries++;
+      if (retries <= MAX_RETRIES) {
+        btn.textContent = '\u2b07 \u91cd\u8a66...';
+        return new Promise(function(r) { setTimeout(r, 1000); }).then(downloadChunk);
+      }
+      throw new Error('\u4e0b\u8f09\u4e2d\u65b7 (' + Math.round(offset/totalSize*100) + '%) - ' + err.message);
+    });
+  }
+
+  return downloadChunk();
+}
+
 function startDl() {
   if (downloading || !selFmt) return;
   if (!currentApi) { showNotice('err', '伺服器未連線，請點「重新偵測」後再試'); return; }
@@ -1104,43 +1146,25 @@ function startDl() {
     return;
   }
 
-  // Determine download URL:
-  // If source is Worker (innertube), URLs are IP-bound to Worker → must proxy via Worker /download
-  // If source is Piped, URLs are Piped proxy URLs → also proxy via Worker for reliability
+  // Download via Worker proxy using chunked Range requests
   var rawUrl = selFmt.url;
   var downloadUrl = CORS_WORKER + '/download?url=' + encodeURIComponent(rawUrl);
+  var CHUNK_SIZE = 512 * 1024; // 512KB per request
 
   downloading = true;
   var btn = document.getElementById('btnDl');
   btn.disabled = true;
-  btn.textContent = '⬇ 下載中...';
+  btn.textContent = '⬇ 準備中...';
   hideNotice();
 
-  // Use fetch + blob for reliable download with progress
-  fetch(downloadUrl, { signal: makeSignal(300000) })
+  // First: HEAD request to get total size
+  fetch(downloadUrl, { method: 'HEAD', signal: makeSignal(15000) })
     .then(function(resp) {
       if (!resp.ok) throw new Error('下載失敗 (HTTP ' + resp.status + ')');
       var total = parseInt(resp.headers.get('content-length') || '0');
-      var reader = resp.body.getReader();
-      var chunks = [];
-      var received = 0;
-      function pump() {
-        return reader.read().then(function(result) {
-          if (result.done) return chunks;
-          chunks.push(result.value);
-          received += result.value.length;
-          if (total) {
-            btn.textContent = '⬇ ' + Math.round(received / total * 100) + '%';
-          } else {
-            btn.textContent = '⬇ ' + fmtSize(received);
-          }
-          return pump();
-        });
-      }
-      return pump().then(function(chunks) {
-        var blob = new Blob(chunks, { type: selFmt.mimeType || 'audio/mp4' });
-        return blob;
-      });
+      if (!total && selFmt.contentLength) total = selFmt.contentLength;
+      if (!total) total = 4 * 1024 * 1024; // fallback 4MB estimate
+      return chunkedDownload(downloadUrl, total, btn);
     })
     .then(function(blob) {
       // Trigger download
@@ -1536,16 +1560,14 @@ function batchDownloadNext(items, idx) {
     return;
   }
 
-  // Download via Worker proxy (URLs are IP-bound to Worker)
+  // Download via Worker proxy using chunked Range requests
   var batchDlUrl = CORS_WORKER + '/download?url=' + encodeURIComponent(stream.url);
   item.status = 'downloading'; item.progress = 10;
   renderBatchQueue();
 
-  fetch(batchDlUrl, { signal: makeSignal(300000) })
-    .then(function(resp) {
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      return resp.blob();
-    })
+  var totalSize = stream.contentLength || 4 * 1024 * 1024;
+  var fakeBtn = { textContent: '' };
+  chunkedDownload(batchDlUrl, totalSize, fakeBtn)
     .then(function(blob) {
       var ext = fmt === 'mp4' ? 'mp4' : (stream.mimeType && stream.mimeType.indexOf('webm') >= 0 ? 'webm' : 'm4a');
       var filename = (item.data.title || 'audio').replace(/[\\/:*?"<>|]/g, '_') + '.' + ext;
