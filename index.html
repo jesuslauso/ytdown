@@ -769,7 +769,7 @@ function initPreview() {
   if (!af.length) return;
 
   var audio = document.getElementById('previewAudio');
-  audio.src = af[0].url;
+  audio.src = af[0]._proxyUrl || af[0].url;
   audio.volume = 0.8;
   previewAudio = audio;
 
@@ -1054,7 +1054,7 @@ function previewThisStream(e, idx) {
   if (!f || !f.url) return;
   var audio = document.getElementById('previewAudio');
   audio.pause();
-  audio.src = f.url;
+  audio.src = f._proxyUrl || f.url;
   audio.volume = parseInt(document.getElementById('prevVol').value) / 100;
   audio.play().then(function() {
     document.getElementById('prevPlayBtn').textContent = '⏸ 暫停';
@@ -1091,7 +1091,8 @@ function startDl() {
     return;
   }
 
-  // Direct download: open YouTube CDN URL in new tab
+  // Use proxy URL for download (direct CDN URLs are IP-restricted)
+  var downloadUrl = selFmt._proxyUrl || streamUrl;
   downloading = true;
   var btn = document.getElementById('btnDl');
   btn.disabled = true;
@@ -1100,7 +1101,7 @@ function startDl() {
 
   // Create a hidden link and click it to trigger download in new tab
   var a = document.createElement('a');
-  a.href = streamUrl;
+  a.href = downloadUrl;
   a.target = '_blank';
   a.rel = 'noopener';
   document.body.appendChild(a);
@@ -1482,9 +1483,10 @@ function batchDownloadNext(items, idx) {
     return;
   }
 
-  // Direct download: open in new tab with delay between items
+  // Direct download: use proxy URL (direct CDN URLs are IP-restricted)
+  var batchDlUrl = stream._proxyUrl || stream.url;
   var a = document.createElement('a');
-  a.href = stream.url; a.target = '_blank'; a.rel = 'noopener';
+  a.href = batchDlUrl; a.target = '_blank'; a.rel = 'noopener';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   item.progress = 100; item.status = 'done';
   renderBatchQueue();
