@@ -399,7 +399,7 @@ var PIPED_APIS = [
   'https://piped.mint.lgbt',
 ];
 
-var TEST_VID = '9bZkp7q19f0'; // PSY Gangnam Style
+var TEST_VID = 'dQw4w9WgXcQ'; // Rick Astley - Never Gonna Give You Up
 
 // ═══════════════════════════════════════════════════════════════
 //  URL REWRITING: Convert Piped proxy URLs to direct YouTube CDN URLs
@@ -462,9 +462,9 @@ function detectInstance() {
     signal: makeSignal(10000),
     headers: { 'Accept': 'application/json' }
   })
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(r) { return r.json(); })
     .then(function(d) {
-      if (d && (d.title || d.audioStreams)) {
+      if (d && (d.title || (d.audioStreams && d.audioStreams.length > 0))) {
         currentApi = CORS_WORKER;
         currentApiIdx = -1;
         workerOk = true;
