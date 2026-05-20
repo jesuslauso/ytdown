@@ -1,748 +1,227 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>你管 - YouTube 影音下載器</title>
-    <meta name="description" content="你管 - 免費 YouTube 影音下載器。快速將 YouTube 影片轉換為 MP3/MP4 格式下載，無需註冊，無廣告。">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        :root {
-            --primary: #ff4444;
-            --primary-dark: #cc0000;
-            --bg: #0f0f0f;
-            --surface: #1a1a1a;
-            --surface-hover: #252525;
-            --text: #ffffff;
-            --text-secondary: #aaaaaa;
-            --border: #333333;
-            --success: #4caf50;
-            --accent: #ff6b6b;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .header {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            padding: 12px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-        }
-
-        .logo-icon {
-            width: 36px;
-            height: 36px;
-            background: var(--primary);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-
-        .logo-text {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--text);
-            letter-spacing: -0.5px;
-        }
-
-        .logo-text span {
-            color: var(--primary);
-        }
-
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 60px 20px 40px;
-        }
-
-        .hero-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .search-container {
-            width: 100%;
-            max-width: 680px;
-            margin-bottom: 40px;
-        }
-
-        .search-box {
-            display: flex;
-            background: var(--surface);
-            border: 2px solid var(--border);
-            border-radius: 50px;
-            overflow: hidden;
-            transition: border-color 0.3s;
-        }
-
-        .search-box:focus-within {
-            border-color: var(--primary);
-        }
-
-        .search-input {
-            flex: 1;
-            padding: 16px 24px;
-            font-size: 16px;
-            background: transparent;
-            border: none;
-            color: var(--text);
-            outline: none;
-        }
-
-        .search-input::placeholder {
-            color: var(--text-secondary);
-        }
-
-        .search-btn {
-            padding: 16px 32px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
-            white-space: nowrap;
-        }
-
-        .search-btn:hover {
-            background: var(--primary-dark);
-        }
-
-        .search-btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-
-        .result-card {
-            width: 100%;
-            max-width: 680px;
-            background: var(--surface);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .result-card.show {
-            display: block;
-        }
-
-        .video-info {
-            display: flex;
-            gap: 16px;
-            padding: 20px;
-        }
-
-        .video-thumb {
-            width: 180px;
-            height: 101px;
-            border-radius: 8px;
-            object-fit: cover;
-            background: var(--border);
-            flex-shrink: 0;
-        }
-
-        .video-meta {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            min-width: 0;
-        }
-
-        .video-title {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .video-author {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        .video-duration {
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .format-section {
-            padding: 0 20px 20px;
-        }
-
-        .format-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .format-tab {
-            padding: 8px 20px;
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text-secondary);
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .format-tab.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        .format-tab:hover:not(.active) {
-            border-color: var(--text-secondary);
-            color: var(--text);
-        }
-
-        .download-options {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .download-option {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background: var(--surface-hover);
-            border-radius: 10px;
-            border: 1px solid var(--border);
-        }
-
-        .option-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .option-format {
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .option-quality {
-            font-size: 12px;
-            color: var(--text-secondary);
-            background: rgba(255,255,255,0.1);
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-
-        .option-size {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .download-btn {
-            padding: 8px 20px;
-            background: var(--success);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            min-width: 90px;
-            justify-content: center;
-        }
-
-        .download-btn:hover {
-            background: #45a049;
-            transform: scale(1.02);
-        }
-
-        .download-btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .download-btn svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid var(--border);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 16px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
-        .error-msg {
-            display: none;
-            text-align: center;
-            padding: 20px;
-            color: var(--accent);
-            font-size: 14px;
-            max-width: 680px;
-            width: 100%;
-        }
-
-        .error-msg.show {
-            display: block;
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            max-width: 680px;
-            width: 100%;
-            margin-top: 60px;
-        }
-
-        .feature {
-            text-align: center;
-            padding: 24px 16px;
-        }
-
-        .feature-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
-        }
-
-        .feature-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .feature-desc {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .footer {
-            text-align: center;
-            padding: 24px;
-            border-top: 1px solid var(--border);
-            color: var(--text-secondary);
-            font-size: 13px;
-        }
-
-        @media (max-width: 600px) {
-            .hero-title { font-size: 1.8rem; }
-            .video-info { flex-direction: column; }
-            .video-thumb { width: 100%; height: auto; aspect-ratio: 16/9; }
-            .search-box { border-radius: 12px; flex-direction: column; }
-            .search-btn { border-radius: 0; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>你管 - YouTube 下載器</title>
+<meta name="description" content="你管 - 免費 YouTube 影音下載器，無廣告，支援 MP3/M4A/MP4">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--red:#ff4444;--bg:#0f0f0f;--card:#1a1a1a;--border:#333;--text:#fff;--muted:#aaa;--green:#4caf50}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.wrap{width:100%;max-width:680px;padding:20px}
+header{text-align:center;padding:50px 0 36px}
+header h1{font-size:2.4em;font-weight:800;background:linear-gradient(135deg,#fff,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header p{color:var(--muted);margin-top:8px;font-size:0.95em}
+.search{display:flex;background:var(--card);border:2px solid var(--border);border-radius:50px;overflow:hidden;transition:border-color .2s}
+.search:focus-within{border-color:var(--red)}
+.search input{flex:1;padding:16px 24px;background:none;border:none;color:var(--text);font-size:1em;outline:none}
+.search input::placeholder{color:#666}
+.search button{padding:16px 32px;background:var(--red);color:#fff;border:none;font-size:1em;font-weight:600;cursor:pointer;transition:background .2s}
+.search button:hover{background:#cc0000}
+.search button:disabled{background:#555;cursor:not-allowed}
+#status{text-align:center;padding:16px;font-size:.9em;color:var(--muted)}
+#status.err{color:var(--red)}
+.card{background:var(--card);border-radius:16px;border:1px solid var(--border);margin-top:20px;display:none;animation:fadeIn .3s}
+.card.show{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.vmeta{display:flex;gap:16px;padding:20px}
+.vmeta img{width:180px;height:101px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--border)}
+.vmeta .info{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.vmeta .info h3{font-size:.95em;font-weight:600;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vmeta .info p{font-size:.82em;color:var(--muted)}
+.tabs{display:flex;padding:0 20px;gap:8px;margin-bottom:12px}
+.tabs button{padding:8px 20px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);font-size:.9em;cursor:pointer;transition:all .2s}
+.tabs button.on{background:var(--red);border-color:var(--red);color:#fff}
+.fmts{padding:0 20px 20px;display:flex;flex-direction:column;gap:8px}
+.fmt{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#222;border-radius:10px;border:1px solid var(--border)}
+.fmt .left{display:flex;align-items:center;gap:12px}
+.fmt .badge{padding:3px 10px;border-radius:6px;font-size:.78em;font-weight:700}
+.fmt .badge.a{background:#1a3a1a;color:#6fbf73}
+.fmt .badge.v{background:#1a1a3a;color:#6b8fff}
+.fmt .qual{font-size:.88em;color:#ccc}
+.fmt .btn{padding:8px 18px;border-radius:20px;border:none;background:var(--green);color:#fff;font-size:.82em;font-weight:600;cursor:pointer;transition:all .15s;min-width:80px;text-align:center}
+.fmt .btn:hover{background:#45a049;transform:scale(1.03)}
+.fmt .btn:disabled{background:#555;cursor:not-allowed;transform:none}
+.prog{height:3px;background:var(--border);border-radius:2px;margin:4px 16px 0;overflow:hidden;display:none}
+.prog.show{display:block}
+.prog .bar{height:100%;background:linear-gradient(90deg,var(--red),#ff8800);border-radius:2px;width:0;transition:width .3s}
+footer{text-align:center;padding:50px 0 20px;color:#555;font-size:.78em}
+@media(max-width:600px){
+  .vmeta{flex-direction:column}
+  .vmeta img{width:100%;height:auto;aspect-ratio:16/9}
+  .search{flex-direction:column;border-radius:16px}
+  .search button{border-radius:0 0 14px 14px}
+  header h1{font-size:1.9em}
+}
+</style>
 </head>
 <body>
-    <header class="header">
-        <a href="#" class="logo">
-            <div class="logo-icon">▶</div>
-            <span class="logo-text">你<span>管</span></span>
-        </a>
-    </header>
+<div class="wrap">
+  <header>
+    <h1>你管</h1>
+    <p>免費下載 YouTube 音頻和影片，無廣告</p>
+  </header>
+  <div class="search">
+    <input id="url" type="text" placeholder="貼上 YouTube 連結..." autocomplete="off">
+    <button id="btn" onclick="go()">下載</button>
+  </div>
+  <div id="status"></div>
+  <div class="card" id="card">
+    <div class="vmeta">
+      <img id="thumb" src="" alt="">
+      <div class="info"><h3 id="title"></h3><p id="channel"></p></div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="fmts" id="fmts"></div>
+  </div>
+  <footer>你管 &copy; 2024 &mdash; 僅供個人使用</footer>
+</div>
+<script>
+const W='https://mute-smoke-da30.so64134022.workers.dev';
+let D=null,tab='audio';
 
-    <main class="main">
-        <h1 class="hero-title">YouTube 影音下載器</h1>
-        <p class="hero-subtitle">貼上 YouTube 連結，免費下載 MP3 音頻或 MP4 影片</p>
+document.getElementById('url').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
 
-        <div class="search-container">
-            <div class="search-box">
-                <input type="text" class="search-input" id="urlInput" placeholder="貼上 YouTube 連結..." autocomplete="off">
-                <button class="search-btn" id="searchBtn" onclick="handleSearch()">下載</button>
-            </div>
-        </div>
+function msg(t,err){const s=document.getElementById('status');s.textContent=t;s.className=err?'err':''}
 
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p class="loading-text" id="loadingText">正在獲取影片資訊...</p>
-        </div>
+async function go(){
+  const url=document.getElementById('url').value.trim();
+  if(!url){msg('請輸入 YouTube 連結',1);return}
+  const b=document.getElementById('btn');
+  b.disabled=true;b.textContent='搜尋中...';
+  msg('正在獲取影片資訊...');
+  document.getElementById('card').classList.remove('show');
+  try{
+    const r=await fetch(W+'/audio?url='+encodeURIComponent(url));
+    const d=await r.json();
+    if(d.error){msg(d.error,1);return}
+    D=d;
+    document.getElementById('thumb').src=d.thumbnail||'';
+    document.getElementById('title').textContent=d.title||'YouTube Video';
+    document.getElementById('channel').textContent=d.channel||'';
+    document.getElementById('card').classList.add('show');
+    msg('');
+    tab='audio';renderTabs();renderFmts();
+  }catch(e){msg('連線失敗: '+e.message,1)}
+  finally{b.disabled=false;b.textContent='下載'}
+}
 
-        <div class="error-msg" id="errorMsg"></div>
+function renderTabs(){
+  const t=document.getElementById('tabs');
+  const hasAudio=D.formats.some(f=>f.type==='audio');
+  const hasVideo=D.formats.some(f=>f.type==='video');
+  let h='';
+  if(hasAudio)h+=`<button class="${tab==='audio'?'on':''}" onclick="tab='audio';renderTabs();renderFmts()">音頻</button>`;
+  if(hasVideo)h+=`<button class="${tab==='video'?'on':''}" onclick="tab='video';renderTabs();renderFmts()">影片</button>`;
+  t.innerHTML=h;
+}
 
-        <div class="result-card" id="resultCard">
-            <div class="video-info">
-                <img class="video-thumb" id="videoThumb" src="" alt="">
-                <div class="video-meta">
-                    <div class="video-title" id="videoTitle"></div>
-                    <div class="video-author" id="videoAuthor"></div>
-                    <div class="video-duration" id="videoDuration"></div>
-                </div>
-            </div>
-            <div class="format-section">
-                <div class="format-tabs">
-                    <button class="format-tab active" data-type="audio" onclick="switchTab('audio')">音頻 MP3</button>
-                    <button class="format-tab" data-type="video" onclick="switchTab('video')">影片 MP4</button>
-                </div>
-                <div class="download-options" id="downloadOptions"></div>
-            </div>
-        </div>
+function renderFmts(){
+  const c=document.getElementById('fmts');
+  const list=D.formats.filter(f=>f.type===tab);
+  if(!list.length){c.innerHTML='<div style="text-align:center;padding:16px;color:#666">無可用格式</div>';return}
+  c.innerHTML=list.map((f,i)=>`
+    <div class="fmt" id="f${i}">
+      <div class="left">
+        <span class="badge ${f.type==='audio'?'a':'v'}">${(f.format||'').toUpperCase()}</span>
+        <span class="qual">${f.quality||f.label||''}</span>
+      </div>
+      <button class="btn" id="b${i}" onclick="dl(${i})">下載</button>
+    </div>
+    <div class="prog" id="p${i}"><div class="bar" id="pb${i}"></div></div>
+  `).join('');
+}
 
-        <div class="features" id="features">
-            <div class="feature">
-                <div class="feature-icon">⚡</div>
-                <div class="feature-title">快速轉換</div>
-                <div class="feature-desc">高速伺服器即時轉換</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🚫</div>
-                <div class="feature-title">零廣告</div>
-                <div class="feature-desc">完全無彈窗無廣告</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🎵</div>
-                <div class="feature-title">高品質</div>
-                <div class="feature-desc">支援 MP3 320kbps</div>
-            </div>
-        </div>
-    </main>
+async function dl(i){
+  const list=D.formats.filter(f=>f.type===tab);
+  const f=list[i];if(!f)return;
+  const btn=document.getElementById('b'+i);
+  const prog=document.getElementById('p'+i);
+  const bar=document.getElementById('pb'+i);
+  btn.disabled=true;prog.classList.add('show');bar.style.width='5%';
 
-    <footer class="footer">
-        <p>你管 &copy; 2025 - 免費 YouTube 下載工具，無廣告</p>
-    </footer>
+  try{
+    if(f.mediaUrl&&D.backend==='ytdown'){
+      await dlYtdown(f,btn,bar);
+    }else{
+      await dlLoader(f,btn,bar);
+    }
+    btn.textContent='完成 ✓';btn.style.background='var(--green)';
+    bar.style.width='100%';
+    setTimeout(()=>{btn.disabled=false;btn.textContent='下載';btn.style.background='';prog.classList.remove('show')},4000);
+  }catch(e){
+    btn.textContent='重試';btn.style.background='#aa3333';
+    msg('下載失敗: '+e.message,1);
+    setTimeout(()=>{btn.disabled=false;btn.textContent='下載';btn.style.background='';prog.classList.remove('show')},4000);
+  }
+}
 
-    <script>
-        // Worker for video info (oEmbed)
-        const WORKER_BASE = 'https://mute-smoke-da30.so64134022.workers.dev';
-        
-        // cnv.cx API (called directly from user's browser - bypasses CF Worker IP block)
-        const CNV_KEY_URL = 'https://cnv.cx/v2/sanity/key';
-        const CNV_CONVERT_URL = 'https://cnv.cx/v2/converter';
-        const CNV_ORIGIN = 'https://frame.y2meta-uk.com';
-        const CNV_REFERER = 'https://frame.y2meta-uk.com/';
+async function dlYtdown(f,btn,bar){
+  btn.textContent='獲取連結...';bar.style.width='20%';
+  let fileUrl=null,fileName='download';
+  for(let i=0;i<30;i++){
+    const r=await fetch(W+'/download?url='+encodeURIComponent(f.mediaUrl));
+    const d=await r.json();
+    if(d.status==='completed'&&d.fileUrl){fileUrl=d.fileUrl;fileName=d.fileName||fileName;break}
+    if(d.error)throw new Error(d.error);
+    btn.textContent='處理中...';bar.style.width=(20+i*2)+'%';
+    await sleep(2000);
+  }
+  if(!fileUrl){
+    // Fallback to loader.to if ytdown download fails
+    btn.textContent='切換備用...';bar.style.width='30%';
+    await dlLoader(f,btn,bar);
+    return;
+  }
+  btn.textContent='下載中...';bar.style.width='70%';
+  await save(W+'/stream?url='+encodeURIComponent(fileUrl)+'&filename='+encodeURIComponent(fileName),fileName);
+  bar.style.width='100%';
+}
 
-        let currentVideoId = '';
-        let currentTitle = '';
-        let currentTab = 'audio';
+async function dlLoader(f,btn,bar){
+  btn.textContent='轉換中...';bar.style.width='25%';
+  let fmt=f.loaderFormat||f.format||'mp3';
+  if(f.type==='video'&&f.quality){
+    const m=f.quality.match(/(\d+)/);
+    if(m)fmt=m[1];
+  }
+  const r=await fetch(W+'/convert?url='+encodeURIComponent('https://www.youtube.com/watch?v='+D.id)+'&format='+fmt);
+  const d=await r.json();
+  if(!d.id)throw new Error(d.error||'提交失敗');
+  
+  let fileUrl=null;
+  for(let i=0;i<60;i++){
+    const pr=await fetch(W+'/progress?id='+d.id);
+    const pd=await pr.json();
+    if(pd.status==='completed'&&pd.fileUrl){fileUrl=pd.fileUrl;break}
+    if(pd.status==='failed')throw new Error('轉換失敗');
+    const pct=pd.progress||0;
+    bar.style.width=(25+pct*0.6)+'%';
+    btn.textContent='轉換 '+pct+'%';
+    await sleep(2000);
+  }
+  if(!fileUrl)throw new Error('轉換超時');
+  
+  btn.textContent='下載中...';bar.style.width='90%';
+  const name=(D.title||D.id)+'.'+(f.format||'mp3');
+  await save(W+'/stream?url='+encodeURIComponent(fileUrl)+'&filename='+encodeURIComponent(name),name);
+}
 
-        function extractVideoId(url) {
-            if (!url) return null;
-            url = url.trim();
-            const patterns = [
-                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/,
-                /^([a-zA-Z0-9_-]{11})$/
-            ];
-            for (const p of patterns) {
-                const m = url.match(p);
-                if (m) return m[1];
-            }
-            return null;
-        }
+async function save(url,name){
+  try{
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const b=await r.blob();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download=name;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }catch(e){window.open(url,'_blank')}
+}
 
-        function showLoading(show, text) {
-            document.getElementById('loading').classList.toggle('show', show);
-            if (text) document.getElementById('loadingText').textContent = text;
-            document.getElementById('resultCard').classList.remove('show');
-            document.getElementById('errorMsg').classList.remove('show');
-        }
-
-        function showError(msg) {
-            const el = document.getElementById('errorMsg');
-            el.textContent = msg;
-            el.classList.add('show');
-            document.getElementById('loading').classList.remove('show');
-            document.getElementById('resultCard').classList.remove('show');
-        }
-
-        function switchTab(type) {
-            currentTab = type;
-            document.querySelectorAll('.format-tab').forEach(t => {
-                t.classList.toggle('active', t.dataset.type === type);
-            });
-            renderOptions();
-        }
-
-        function renderOptions() {
-            const formats = currentTab === 'audio' ? [
-                { format: 'mp3', quality: '320', label: 'MP3', qualityLabel: '320 kbps', desc: '最高品質' },
-                { format: 'mp3', quality: '256', label: 'MP3', qualityLabel: '256 kbps', desc: '高品質' },
-                { format: 'mp3', quality: '128', label: 'MP3', qualityLabel: '128 kbps', desc: '標準品質' },
-            ] : [
-                { format: 'mp4', quality: '1080', label: 'MP4', qualityLabel: '1080p', desc: 'Full HD' },
-                { format: 'mp4', quality: '720', label: 'MP4', qualityLabel: '720p', desc: 'HD' },
-                { format: 'mp4', quality: '480', label: 'MP4', qualityLabel: '480p', desc: '標準' },
-                { format: 'mp4', quality: '360', label: 'MP4', qualityLabel: '360p', desc: '流暢' },
-            ];
-
-            const html = formats.map((f, idx) => `
-                <div class="download-option">
-                    <div class="option-info">
-                        <span class="option-format">${f.label}</span>
-                        <span class="option-quality">${f.qualityLabel}</span>
-                        <span class="option-size">${f.desc}</span>
-                    </div>
-                    <button class="download-btn" onclick="startDownload('${f.format}', '${f.quality}', this)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                        </svg>
-                        下載
-                    </button>
-                </div>
-            `).join('');
-
-            document.getElementById('downloadOptions').innerHTML = html;
-        }
-
-        async function handleSearch() {
-            const input = document.getElementById('urlInput').value;
-            const videoId = extractVideoId(input);
-
-            if (!videoId) {
-                showError('請輸入有效的 YouTube 連結或影片 ID');
-                return;
-            }
-
-            currentVideoId = videoId;
-            const btn = document.getElementById('searchBtn');
-            btn.disabled = true;
-            showLoading(true, '正在獲取影片資訊...');
-
-            try {
-                // Get video info from Worker (oEmbed - always works)
-                const resp = await fetch(`${WORKER_BASE}/audio?id=${videoId}`);
-                const data = await resp.json();
-
-                if (data.error) {
-                    showError(data.error + (data.reason ? ' (' + data.reason + ')' : ''));
-                    return;
-                }
-
-                currentTitle = data.title || 'video';
-
-                document.getElementById('videoThumb').src = data.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
-                document.getElementById('videoTitle').textContent = data.title || 'Unknown';
-                document.getElementById('videoAuthor').textContent = data.channel || '';
-                document.getElementById('videoDuration').textContent = '';
-
-                // Hide features section
-                document.getElementById('features').style.display = 'none';
-
-                // Reset to audio tab
-                currentTab = 'audio';
-                document.querySelectorAll('.format-tab').forEach(t => {
-                    t.classList.toggle('active', t.dataset.type === 'audio');
-                });
-
-                renderOptions();
-
-                document.getElementById('loading').classList.remove('show');
-                document.getElementById('resultCard').classList.add('show');
-
-            } catch (err) {
-                showError('網絡錯誤，請稍後再試: ' + err.message);
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        async function startDownload(format, quality, btn) {
-            btn.disabled = true;
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '轉換中...';
-
-            try {
-                // Step 1: Get cnv.cx key (from user's browser - not blocked by CF)
-                btn.innerHTML = '獲取金鑰...';
-                const keyResp = await fetch(CNV_KEY_URL, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Origin': CNV_ORIGIN,
-                        'Referer': CNV_REFERER,
-                    }
-                });
-                
-                if (!keyResp.ok) {
-                    // If direct call fails (CORS), try through Worker proxy
-                    throw new Error('CORS_BLOCKED');
-                }
-                
-                const keyData = await keyResp.json();
-                const key = keyData.key;
-
-                // Step 2: Convert
-                btn.innerHTML = '轉換中...';
-                const isAudio = (format === 'mp3');
-                const convertResp = await fetch(CNV_CONVERT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Accept': '*/*',
-                        'key': key,
-                        'Origin': CNV_ORIGIN,
-                        'Referer': CNV_REFERER,
-                    },
-                    body: new URLSearchParams({
-                        link: `https://youtu.be/${currentVideoId}`,
-                        format: format,
-                        audioBitrate: isAudio ? quality : '128',
-                        videoQuality: isAudio ? '720' : quality,
-                        filenameStyle: 'pretty',
-                        vCodec: 'h264',
-                    }).toString()
-                });
-
-                if (!convertResp.ok) throw new Error('轉換失敗');
-                const result = await convertResp.json();
-
-                if (result.url) {
-                    btn.innerHTML = '下載中...';
-                    // Trigger download
-                    const a = document.createElement('a');
-                    a.href = result.url;
-                    a.download = result.filename || `${currentTitle}.${format}`;
-                    a.target = '_blank';
-                    a.rel = 'noopener noreferrer';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-
-                    btn.innerHTML = '完成 ✓';
-                    btn.style.background = 'var(--success)';
-                    setTimeout(() => {
-                        btn.innerHTML = originalHTML;
-                        btn.style.background = '';
-                        btn.disabled = false;
-                    }, 3000);
-                    return;
-                } else {
-                    throw new Error(result.errorMsg || '轉換失敗，請重試');
-                }
-
-            } catch (err) {
-                if (err.message === 'CORS_BLOCKED') {
-                    // Fallback: try through Worker proxy (may not work due to IP block)
-                    try {
-                        await downloadViaWorker(format, quality, btn, originalHTML);
-                        return;
-                    } catch (e2) {
-                        btn.innerHTML = '失敗';
-                        btn.style.background = 'var(--accent)';
-                        setTimeout(() => {
-                            btn.innerHTML = originalHTML;
-                            btn.style.background = '';
-                            btn.disabled = false;
-                        }, 3000);
-                        alert('下載失敗：瀏覽器安全限制。請嘗試使用其他瀏覽器或關閉廣告攔截器。');
-                        return;
-                    }
-                }
-                
-                btn.innerHTML = '失敗';
-                btn.style.background = 'var(--accent)';
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
-                    btn.style.background = '';
-                    btn.disabled = false;
-                }, 3000);
-                alert(err.message || '下載失敗，請重試');
-            }
-        }
-
-        // Fallback: try through Worker (may fail due to IP block)
-        async function downloadViaWorker(format, quality, btn, originalHTML) {
-            btn.innerHTML = '嘗試備用...';
-            const resp = await fetch(`${WORKER_BASE}/download?id=${currentVideoId}&format=${format}&quality=${quality}`);
-            const data = await resp.json();
-            
-            if (data.url) {
-                const a = document.createElement('a');
-                a.href = data.url;
-                a.download = data.filename || `${currentTitle}.${format}`;
-                a.target = '_blank';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                
-                btn.innerHTML = '完成 ✓';
-                btn.style.background = 'var(--success)';
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
-                    btn.style.background = '';
-                    btn.disabled = false;
-                }, 3000);
-            } else {
-                throw new Error(data.error || '備用方案也失敗');
-            }
-        }
-
-        // Enter key support
-        document.getElementById('urlInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearch();
-        });
-    </script>
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+</script>
 </body>
 </html>
