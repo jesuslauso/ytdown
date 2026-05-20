@@ -1,0 +1,43 @@
+name: Daily Health Check
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Worker Health
+        run: |
+          echo "=== Health Check ==="
+          RESP=$(curl -s -w "\n%{http_code}" "https://mute-smoke-da30.so64134022.workers.dev/")
+          HTTP_CODE=$(echo "$RESP" | tail -1)
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Worker OK"
+          else
+            echo "Worker DOWN"
+            echo "WORKER_DOWN=true" >> $GITHUB_ENV
+          fi
+          AUDIO=$(curl -s "https://mute-smoke-da30.so64134022.workers.dev/audio?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+          TITLE=$(echo "$AUDIO" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("title","ERROR"))' 2>/dev/null)
+          if echo "$TITLE" | grep -q "ERROR"; then
+            echo "Search FAILED"
+            echo "SEARCH_FAILED=true" >> $GITHUB_ENV
+          else
+            echo "Search OK: $TITLE"
+          fi
+
+      - name: Create Issue on Failure
+        if: env.WORKER_DOWN == 'true' || env.SEARCH_FAILED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Health Check Failed - ' + new Date().toISOString().split('T')[0],
+              body: 'Worker or search is down.',
+              labels: ['health-check']
+            });
