@@ -564,9 +564,7 @@
                     const qualityText = f.quality === 'AUDIO_QUALITY_MEDIUM' ? '128kbps' : '48kbps';
                     const codecText = isM4A ? 'AAC' : 'Opus';
                     const filename = encodeURIComponent(data.title.replace(/[<>:"/\\|?*]/g, ''));
-                    const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${filename}`;
-                    // Use direct googlevideo URL for download
-                    const directUrl = f.url;
+                    const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${filename}.${ext}`;
 
                     return `
                         <div class="download-option">
@@ -575,12 +573,12 @@
                                 <span class="option-quality">${codecText} ${qualityText}</span>
                                 <span class="option-size">${formatSize(f.size)}</span>
                             </div>
-                            <button class="download-btn" onclick="startDownload('${directUrl}', '${filename}.${ext}')">
+                            <a class="download-btn" href="${streamUrl}" target="_blank" rel="noopener">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                                 </svg>
                                 下載
-                            </button>
+                            </a>
                         </div>
                     `;
                 }).join('');
@@ -596,17 +594,7 @@
             }
         }
 
-        function startDownload(url, filename) {
-            // Open the googlevideo URL directly - it will stream the audio
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+        // Download is now handled via direct link to Worker /stream endpoint
     </script>
 </body>
 </html>
