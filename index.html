@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>你管 - YouTube 音頻下載器</title>
-    <meta name="description" content="你管 - 免費 YouTube 音頻下載器。快速將 YouTube 影片轉換為 MP3/M4A 格式下載，無需註冊，無廣告。">
+    <title>你管 - YouTube 影音下載器</title>
+    <meta name="description" content="你管 - 免費 YouTube 影音下載器。快速將 YouTube 影片轉換為 MP3/MP4 格式下載，無需註冊，無廣告。">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -381,52 +381,48 @@
         }
 
         .feature-title {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             margin-bottom: 6px;
         }
 
         .feature-desc {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-secondary);
-            line-height: 1.5;
         }
 
         .footer {
             text-align: center;
             padding: 24px;
-            color: var(--text-secondary);
-            font-size: 12px;
             border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 13px;
         }
 
         @media (max-width: 600px) {
             .hero-title { font-size: 1.8rem; }
             .video-info { flex-direction: column; }
             .video-thumb { width: 100%; height: auto; aspect-ratio: 16/9; }
-            .search-btn { padding: 16px 20px; }
-            .main { padding: 40px 16px 30px; }
-            .format-tabs { flex-wrap: wrap; }
+            .search-box { border-radius: 12px; flex-direction: column; }
+            .search-btn { border-radius: 0; }
         }
     </style>
 </head>
 <body>
     <header class="header">
-        <a href="/" class="logo">
-            <div class="logo-icon">&#9835;</div>
-            <div class="logo-text"><span>你</span>管</div>
+        <a href="#" class="logo">
+            <div class="logo-icon">▶</div>
+            <span class="logo-text">你<span>管</span></span>
         </a>
     </header>
 
     <main class="main">
-        <h1 class="hero-title">YouTube 音頻下載器</h1>
-        <p class="hero-subtitle">貼上 YouTube 連結，即可免費下載 MP3 / M4A 音頻檔案</p>
+        <h1 class="hero-title">YouTube 影音下載器</h1>
+        <p class="hero-subtitle">貼上 YouTube 連結，免費下載 MP3 音頻或 MP4 影片</p>
 
         <div class="search-container">
             <div class="search-box">
-                <input type="text" class="search-input" id="urlInput" 
-                       placeholder="貼上 YouTube 連結或影片 ID..." 
-                       autocomplete="off">
+                <input type="text" class="search-input" id="urlInput" placeholder="貼上 YouTube 連結..." autocomplete="off">
                 <button class="search-btn" id="searchBtn" onclick="handleSearch()">下載</button>
             </div>
         </div>
@@ -440,7 +436,7 @@
 
         <div class="result-card" id="resultCard">
             <div class="video-info">
-                <img class="video-thumb" id="videoThumb" src="" alt="thumbnail">
+                <img class="video-thumb" id="videoThumb" src="" alt="">
                 <div class="video-meta">
                     <div class="video-title" id="videoTitle"></div>
                     <div class="video-author" id="videoAuthor"></div>
@@ -448,55 +444,60 @@
                 </div>
             </div>
             <div class="format-section">
-                <div class="format-tabs" id="formatTabs">
-                    <button class="format-tab active" data-type="audio" onclick="switchTab('audio')">音頻</button>
-                    <button class="format-tab" data-type="video" onclick="switchTab('video')">影片</button>
+                <div class="format-tabs">
+                    <button class="format-tab active" data-type="audio" onclick="switchTab('audio')">音頻 MP3</button>
+                    <button class="format-tab" data-type="video" onclick="switchTab('video')">影片 MP4</button>
                 </div>
                 <div class="download-options" id="downloadOptions"></div>
             </div>
         </div>
 
-        <div class="features">
+        <div class="features" id="features">
             <div class="feature">
-                <div class="feature-icon">&#9889;</div>
-                <div class="feature-title">極速下載</div>
-                <div class="feature-desc">高速伺服器直接處理，支援 MP3、M4A 格式</div>
+                <div class="feature-icon">⚡</div>
+                <div class="feature-title">快速轉換</div>
+                <div class="feature-desc">高速伺服器即時轉換</div>
             </div>
             <div class="feature">
-                <div class="feature-icon">&#128274;</div>
-                <div class="feature-title">安全無廣告</div>
-                <div class="feature-desc">完全無廣告、無彈窗、無惡意軟體，安心使用</div>
+                <div class="feature-icon">🚫</div>
+                <div class="feature-title">零廣告</div>
+                <div class="feature-desc">完全無彈窗無廣告</div>
             </div>
             <div class="feature">
-                <div class="feature-icon">&#127911;</div>
-                <div class="feature-title">高品質音頻</div>
-                <div class="feature-desc">支援 M4A (AAC) 和 MP3 格式，最高 128kbps</div>
+                <div class="feature-icon">🎵</div>
+                <div class="feature-title">高品質</div>
+                <div class="feature-desc">支援 MP3 320kbps</div>
             </div>
         </div>
     </main>
 
     <footer class="footer">
-        <p>你管 &copy; 2024 - 免費 YouTube 音頻下載工具 | 僅供個人使用</p>
+        <p>你管 &copy; 2025 - 免費 YouTube 下載工具，無廣告</p>
     </footer>
 
     <script>
-        const API_BASE = 'https://mute-smoke-da30.so64134022.workers.dev';
-        let currentData = null;
+        // Worker for video info (oEmbed)
+        const WORKER_BASE = 'https://mute-smoke-da30.so64134022.workers.dev';
+        
+        // cnv.cx API (called directly from user's browser - bypasses CF Worker IP block)
+        const CNV_KEY_URL = 'https://cnv.cx/v2/sanity/key';
+        const CNV_CONVERT_URL = 'https://cnv.cx/v2/converter';
+        const CNV_ORIGIN = 'https://frame.y2meta-uk.com';
+        const CNV_REFERER = 'https://frame.y2meta-uk.com/';
+
+        let currentVideoId = '';
+        let currentTitle = '';
         let currentTab = 'audio';
 
-        document.getElementById('urlInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSearch();
-        });
-
-        function extractVideoId(input) {
-            input = input.trim();
-            if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+        function extractVideoId(url) {
+            if (!url) return null;
+            url = url.trim();
             const patterns = [
-                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-                /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/,
+                /^([a-zA-Z0-9_-]{11})$/
             ];
             for (const p of patterns) {
-                const m = input.match(p);
+                const m = url.match(p);
                 if (m) return m[1];
             }
             return null;
@@ -526,33 +527,34 @@
         }
 
         function renderOptions() {
-            if (!currentData) return;
-            const items = currentTab === 'audio' ? currentData.audio : currentData.video;
-            
-            const html = items.map((item, idx) => {
-                const ext = item.extension || 'M4A';
-                const quality = item.quality || '';
-                const size = item.fileSize || '';
-                const resolution = item.resolution ? ` (${item.resolution})` : '';
-                
-                return `
-                    <div class="download-option">
-                        <div class="option-info">
-                            <span class="option-format">${ext}</span>
-                            <span class="option-quality">${quality}${resolution}</span>
-                            <span class="option-size">${size}</span>
-                        </div>
-                        <button class="download-btn" data-idx="${idx}" data-type="${currentTab}" onclick="startDownload(this)">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                            </svg>
-                            下載
-                        </button>
-                    </div>
-                `;
-            }).join('');
+            const formats = currentTab === 'audio' ? [
+                { format: 'mp3', quality: '320', label: 'MP3', qualityLabel: '320 kbps', desc: '最高品質' },
+                { format: 'mp3', quality: '256', label: 'MP3', qualityLabel: '256 kbps', desc: '高品質' },
+                { format: 'mp3', quality: '128', label: 'MP3', qualityLabel: '128 kbps', desc: '標準品質' },
+            ] : [
+                { format: 'mp4', quality: '1080', label: 'MP4', qualityLabel: '1080p', desc: 'Full HD' },
+                { format: 'mp4', quality: '720', label: 'MP4', qualityLabel: '720p', desc: 'HD' },
+                { format: 'mp4', quality: '480', label: 'MP4', qualityLabel: '480p', desc: '標準' },
+                { format: 'mp4', quality: '360', label: 'MP4', qualityLabel: '360p', desc: '流暢' },
+            ];
 
-            document.getElementById('downloadOptions').innerHTML = html || '<p style="color:var(--text-secondary);text-align:center;padding:16px;">無可用格式</p>';
+            const html = formats.map((f, idx) => `
+                <div class="download-option">
+                    <div class="option-info">
+                        <span class="option-format">${f.label}</span>
+                        <span class="option-quality">${f.qualityLabel}</span>
+                        <span class="option-size">${f.desc}</span>
+                    </div>
+                    <button class="download-btn" onclick="startDownload('${f.format}', '${f.quality}', this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                        下載
+                    </button>
+                </div>
+            `).join('');
+
+            document.getElementById('downloadOptions').innerHTML = html;
         }
 
         async function handleSearch() {
@@ -564,12 +566,14 @@
                 return;
             }
 
+            currentVideoId = videoId;
             const btn = document.getElementById('searchBtn');
             btn.disabled = true;
             showLoading(true, '正在獲取影片資訊...');
 
             try {
-                const resp = await fetch(`${API_BASE}/audio?id=${videoId}`);
+                // Get video info from Worker (oEmbed - always works)
+                const resp = await fetch(`${WORKER_BASE}/audio?id=${videoId}`);
                 const data = await resp.json();
 
                 if (data.error) {
@@ -577,19 +581,18 @@
                     return;
                 }
 
-                currentData = data;
-                currentTab = 'audio';
+                currentTitle = data.title || 'video';
 
-                document.getElementById('videoThumb').src = data.thumbnail;
-                document.getElementById('videoTitle').textContent = data.title;
+                document.getElementById('videoThumb').src = data.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+                document.getElementById('videoTitle').textContent = data.title || 'Unknown';
                 document.getElementById('videoAuthor').textContent = data.channel || '';
-                document.getElementById('videoDuration').textContent = data.duration ? '時長: ' + data.duration : '';
+                document.getElementById('videoDuration').textContent = '';
 
-                // Show/hide video tab
-                const videoTab = document.querySelector('[data-type="video"]');
-                videoTab.style.display = (data.video && data.video.length > 0) ? '' : 'none';
+                // Hide features section
+                document.getElementById('features').style.display = 'none';
 
                 // Reset to audio tab
+                currentTab = 'audio';
                 document.querySelectorAll('.format-tab').forEach(t => {
                     t.classList.toggle('active', t.dataset.type === 'audio');
                 });
@@ -606,78 +609,140 @@
             }
         }
 
-        async function startDownload(btn) {
-            const idx = parseInt(btn.dataset.idx);
-            const type = btn.dataset.type;
-            const items = type === 'audio' ? currentData.audio : currentData.video;
-            const item = items[idx];
-            if (!item || !item.mediaUrl) return;
-
+        async function startDownload(format, quality, btn) {
             btn.disabled = true;
-            btn.innerHTML = '處理中...';
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '轉換中...';
 
             try {
-                // Step 1: Poll worker03.com via our Worker /download endpoint
-                let fileUrl = null;
-                let fileName = null;
-                let attempts = 0;
-                const maxAttempts = 30;
-
-                while (attempts < maxAttempts) {
-                    const resp = await fetch(`${API_BASE}/download?url=${encodeURIComponent(item.mediaUrl)}`);
-                    const data = await resp.json();
-
-                    if (data.status === 'completed' && data.fileUrl && data.fileUrl !== 'Waiting...') {
-                        fileUrl = data.fileUrl;
-                        fileName = data.fileName || `${currentData.title}.${item.extension.toLowerCase()}`;
-                        break;
+                // Step 1: Get cnv.cx key (from user's browser - not blocked by CF)
+                btn.innerHTML = '獲取金鑰...';
+                const keyResp = await fetch(CNV_KEY_URL, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': CNV_ORIGIN,
+                        'Referer': CNV_REFERER,
                     }
+                });
+                
+                if (!keyResp.ok) {
+                    // If direct call fails (CORS), try through Worker proxy
+                    throw new Error('CORS_BLOCKED');
+                }
+                
+                const keyData = await keyResp.json();
+                const key = keyData.key;
 
-                    if (data.status === 'error') {
-                        throw new Error('處理失敗，請重試');
-                    }
+                // Step 2: Convert
+                btn.innerHTML = '轉換中...';
+                const isAudio = (format === 'mp3');
+                const convertResp = await fetch(CNV_CONVERT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': '*/*',
+                        'key': key,
+                        'Origin': CNV_ORIGIN,
+                        'Referer': CNV_REFERER,
+                    },
+                    body: new URLSearchParams({
+                        link: `https://youtu.be/${currentVideoId}`,
+                        format: format,
+                        audioBitrate: isAudio ? quality : '128',
+                        videoQuality: isAudio ? '720' : quality,
+                        filenameStyle: 'pretty',
+                        vCodec: 'h264',
+                    }).toString()
+                });
 
-                    // Show progress
-                    const progress = data.progress || '處理中';
-                    const position = data.position ? ` (排隊: #${data.position})` : '';
-                    btn.innerHTML = `${progress}${position}`;
-                    
-                    attempts++;
-                    await new Promise(r => setTimeout(r, 2000));
+                if (!convertResp.ok) throw new Error('轉換失敗');
+                const result = await convertResp.json();
+
+                if (result.url) {
+                    btn.innerHTML = '下載中...';
+                    // Trigger download
+                    const a = document.createElement('a');
+                    a.href = result.url;
+                    a.download = result.filename || `${currentTitle}.${format}`;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    btn.innerHTML = '完成 ✓';
+                    btn.style.background = 'var(--success)';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.style.background = '';
+                        btn.disabled = false;
+                    }, 3000);
+                    return;
+                } else {
+                    throw new Error(result.errorMsg || '轉換失敗，請重試');
                 }
 
-                if (!fileUrl) {
-                    throw new Error('處理超時，請重試');
+            } catch (err) {
+                if (err.message === 'CORS_BLOCKED') {
+                    // Fallback: try through Worker proxy (may not work due to IP block)
+                    try {
+                        await downloadViaWorker(format, quality, btn, originalHTML);
+                        return;
+                    } catch (e2) {
+                        btn.innerHTML = '失敗';
+                        btn.style.background = 'var(--accent)';
+                        setTimeout(() => {
+                            btn.innerHTML = originalHTML;
+                            btn.style.background = '';
+                            btn.disabled = false;
+                        }, 3000);
+                        alert('下載失敗：瀏覽器安全限制。請嘗試使用其他瀏覽器或關閉廣告攔截器。');
+                        return;
+                    }
                 }
+                
+                btn.innerHTML = '失敗';
+                btn.style.background = 'var(--accent)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                }, 3000);
+                alert(err.message || '下載失敗，請重試');
+            }
+        }
 
-                // Step 2: Download via /stream endpoint
-                const safeTitle = currentData.title.replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
-                const ext = item.extension.toLowerCase();
-                const downloadName = `${safeTitle}.${ext}`;
-                const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(downloadName)}`;
-
-                btn.innerHTML = '下載中...';
-
-                const dlResp = await fetch(streamUrl);
-                if (!dlResp.ok) throw new Error('下載失敗');
-
-                const blob = await dlResp.blob();
-                const blobUrl = URL.createObjectURL(blob);
+        // Fallback: try through Worker (may fail due to IP block)
+        async function downloadViaWorker(format, quality, btn, originalHTML) {
+            btn.innerHTML = '嘗試備用...';
+            const resp = await fetch(`${WORKER_BASE}/download?id=${currentVideoId}&format=${format}&quality=${quality}`);
+            const data = await resp.json();
+            
+            if (data.url) {
                 const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = downloadName;
+                a.href = data.url;
+                a.download = data.filename || `${currentTitle}.${format}`;
+                a.target = '_blank';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                URL.revokeObjectURL(blobUrl);
-
-            } catch (err) {
-                alert(err.message || '下載失敗，請重試');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> 下載`;
+                
+                btn.innerHTML = '完成 ✓';
+                btn.style.background = 'var(--success)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                }, 3000);
+            } else {
+                throw new Error(data.error || '備用方案也失敗');
             }
         }
+
+        // Enter key support
+        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
     </script>
 </body>
 </html>
