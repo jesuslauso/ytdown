@@ -23,6 +23,7 @@ header p{color:var(--muted);margin-top:8px;font-size:0.95em}
 .search button:disabled{background:#555;cursor:not-allowed}
 #status{text-align:center;padding:16px;font-size:.9em;color:var(--muted)}
 #status.err{color:var(--red)}
+#status.warn{color:#f59e0b}
 .card{background:var(--card);border-radius:16px;border:1px solid var(--border);margin-top:20px;display:none;animation:fadeIn .3s}
 .card.show{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -84,11 +85,11 @@ let D=null,tab='audio';
 
 document.getElementById('url').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
 
-function msg(t,err){const s=document.getElementById('status');s.textContent=t;s.className=err?'err':''}
+function msg(t,cls){const s=document.getElementById('status');s.textContent=t;s.className=cls||''}
 
 async function go(){
   const url=document.getElementById('url').value.trim();
-  if(!url){msg('請輸入 YouTube 連結',1);return}
+  if(!url){msg('請輸入 YouTube 連結','err');return}
   const b=document.getElementById('btn');
   b.disabled=true;b.textContent='搜尋中...';
   msg('正在獲取影片資訊...');
@@ -96,15 +97,37 @@ async function go(){
   try{
     const r=await fetch(W+'/audio?url='+encodeURIComponent(url));
     const d=await r.json();
-    if(d.error){msg(d.error,1);return}
-    D=d;
-    document.getElementById('thumb').src=d.thumbnail||'';
-    document.getElementById('title').textContent=d.title||'YouTube Video';
-    document.getElementById('channel').textContent=d.channel||'';
+    
+    if(r.status===429){
+      // Rate limited - auto retry with countdown
+      const wait=d.retryAfter||30;
+      msg(`伺服器繁忙，${wait} 秒後自動重試...`,'warn');
+      for(let i=wait;i>0;i--){
+        msg(`伺服器繁忙，${i} 秒後自動重試...`,'warn');
+        await sleep(1000);
+      }
+      msg('重試中...');
+      const r2=await fetch(W+'/audio?url='+encodeURIComponent(url));
+      const d2=await r2.json();
+      if(r2.status===429||d2.error){
+        msg('伺服器仍然繁忙，請等待 1 分鐘後再試','err');
+        return;
+      }
+      D=d2;
+    }else if(!r.ok||d.error){
+      msg(d.message||d.error||'搜尋失敗，請稍後再試','err');
+      return;
+    }else{
+      D=d;
+    }
+    
+    document.getElementById('thumb').src=D.thumbnail||'';
+    document.getElementById('title').textContent=D.title||'YouTube Video';
+    document.getElementById('channel').textContent=D.channel||'';
     document.getElementById('card').classList.add('show');
     msg('');
     tab='audio';renderTabs();renderFmts();
-  }catch(e){msg('連線失敗: '+e.message,1)}
+  }catch(e){msg('連線失敗: '+e.message,'err')}
   finally{b.disabled=false;b.textContent='下載'}
 }
 
@@ -143,112 +166,84 @@ async function dl(i){
   btn.disabled=true;prog.classList.add('show');bar.style.width='5%';
 
   try{
-    if(f.mediaUrl&&D.backend==='ytdown'){
-      await dlYtdown(f,btn,bar);
-    }else{
-      await dlLoader(f,btn,bar);
+    btn.textContent='獲取連結...';bar.style.width='20%';
+    
+    const r=await fetch(W+'/download?url='+encodeURIComponent(f.mediaUrl));
+    const d=await r.json();
+    
+    if(r.status===429){
+      // Rate limited on download - wait and retry once
+      btn.textContent='等待中...';bar.style.width='30%';
+      await sleep(15000);
+      btn.textContent='重試中...';bar.style.width='40%';
+      const r2=await fetch(W+'/download?url='+encodeURIComponent(f.mediaUrl));
+      const d2=await r2.json();
+      if(d2.status==='completed'&&d2.fileUrl){
+        bar.style.width='70%';btn.textContent='下載中...';
+        await triggerDownload(d2.fileUrl,D.title,f.format);
+        done(btn,bar,prog);return;
+      }
+      throw new Error('伺服器繁忙，請 30 秒後再試');
     }
-    btn.textContent='完成 ✓';btn.style.background='var(--green)';
-    bar.style.width='100%';
-    setTimeout(()=>{btn.disabled=false;btn.textContent='下載';btn.style.background='';prog.classList.remove('show')},4000);
+    
+    if(d.status==='completed'&&d.fileUrl){
+      bar.style.width='70%';btn.textContent='下載中...';
+      await triggerDownload(d.fileUrl,D.title,f.format);
+      done(btn,bar,prog);return;
+    }
+    
+    if(d.status==='processing'){
+      // Poll until complete
+      for(let j=0;j<30;j++){
+        await sleep(2000);
+        const pr=await fetch(W+'/download?url='+encodeURIComponent(f.mediaUrl));
+        const pd=await pr.json();
+        if(pd.status==='completed'&&pd.fileUrl){
+          bar.style.width='70%';btn.textContent='下載中...';
+          await triggerDownload(pd.fileUrl,D.title,f.format);
+          done(btn,bar,prog);return;
+        }
+        bar.style.width=(20+j*2)+'%';
+        btn.textContent='處理 '+(pd.progress||'...');
+      }
+      throw new Error('處理超時');
+    }
+    
+    throw new Error(d.error||'下載失敗');
   }catch(e){
-    btn.textContent='重試';btn.style.background='#aa3333';
-    msg('下載失敗: '+e.message,1);
-    setTimeout(()=>{btn.disabled=false;btn.textContent='下載';btn.style.background='';prog.classList.remove('show')},4000);
+    btn.textContent='失敗';btn.style.background='#aa3333';
+    msg('下載失敗: '+e.message,'err');
+    setTimeout(()=>{btn.disabled=false;btn.textContent='下載';btn.style.background='';prog.classList.remove('show')},5000);
   }
 }
 
-async function dlYtdown(f,btn,bar){
-  btn.textContent='獲取連結...';bar.style.width='20%';
-  let fileUrl=null,fileName='download';
-  const videoUrl='https://www.youtube.com/watch?v='+D.id;
-  // First try: /download with videoUrl for auto-fallback to loader.to
-  const dlParams=new URLSearchParams({url:f.mediaUrl,videoUrl:videoUrl,format:f.format||'mp3',quality:f.quality||'128k'});
-  const r=await fetch(W+'/download?'+dlParams);
-  const d=await r.json();
-  if(d.status==='completed'&&d.fileUrl){
-    fileUrl=d.fileUrl;fileName=d.fileName||fileName;
-  }else if(d.status==='processing'&&d.pollUrl){
-    // Poll ytdown
-    for(let i=0;i<20;i++){
-      await sleep(2000);
-      const pr=await fetch(W+'/download?url='+encodeURIComponent(d.pollUrl)+'&videoUrl='+encodeURIComponent(videoUrl)+'&format='+(f.format||'mp3')+'&quality='+(f.quality||'128k'));
-      const pd=await pr.json();
-      if(pd.status==='completed'&&pd.fileUrl){fileUrl=pd.fileUrl;fileName=pd.fileName||fileName;break}
-      btn.textContent='處理中...';bar.style.width=(20+i*2.5)+'%';
-    }
-  }else if(d.status==='processing'&&d.loaderId){
-    // Loader.to fallback - poll progress
-    btn.textContent='備用轉換中...';
-    for(let i=0;i<60;i++){
-      await sleep(2000);
-      const pr=await fetch(W+'/progress?id='+d.loaderId);
-      const pd=await pr.json();
-      if(pd.status==='completed'&&pd.fileUrl){fileUrl=pd.fileUrl;fileName=(D.title||D.id)+'.'+(f.format||'mp3');break}
-      if(pd.status==='failed')throw new Error('轉換失敗');
-      bar.style.width=(20+(pd.progress||0)*0.6)+'%';
-      btn.textContent='轉換 '+(pd.progress||0)+'%';
-    }
-  }else if(d.error){
-    // Both backends failed in Worker, try loader.to from frontend
-    btn.textContent='切換備用...';bar.style.width='30%';
-    await dlLoader(f,btn,bar);
-    return;
-  }
-  if(!fileUrl){
-    btn.textContent='切換備用...';bar.style.width='30%';
-    await dlLoader(f,btn,bar);
-    return;
-  }
-  btn.textContent='下載中...';bar.style.width='70%';
-  // If from loader.to (savenow.to), open directly; if from ytdown (iamworker), use /stream proxy
-  if(fileUrl.includes('savenow.to')||fileUrl.includes('loader.to')){
-    window.open(fileUrl,'_blank');
-  }else{
-    await save(W+'/stream?url='+encodeURIComponent(fileUrl)+'&filename='+encodeURIComponent(fileName),fileName);
-  }
-  bar.style.width='100%';
+function done(btn,bar,prog){
+  btn.textContent='完成 ✓';btn.style.background='var(--green)';bar.style.width='100%';
+  setTimeout(()=>{btn.disabled=false;btn.textContent='下載';btn.style.background='';prog.classList.remove('show')},4000);
 }
 
-async function dlLoader(f,btn,bar){
-  btn.textContent='轉換中...';bar.style.width='25%';
-  let fmt=f.loaderFormat||f.format||'mp3';
-  if(f.type==='video'&&f.quality){
-    const m=f.quality.match(/(\d+)/);
-    if(m)fmt=m[1];
-  }
-  const r=await fetch(W+'/convert?url='+encodeURIComponent('https://www.youtube.com/watch?v='+D.id)+'&format='+fmt);
-  const d=await r.json();
-  if(!d.id)throw new Error(d.error||'提交失敗');
+async function triggerDownload(fileUrl,title,format){
+  const filename=((title||'download').replace(/[<>:"/\\|?*]/g,''))+'.'+format;
+  const streamUrl=W+'/stream?url='+encodeURIComponent(fileUrl)+'&filename='+encodeURIComponent(filename);
   
-  let fileUrl=null;
-  for(let i=0;i<60;i++){
-    const pr=await fetch(W+'/progress?id='+d.id);
-    const pd=await pr.json();
-    if(pd.status==='completed'&&pd.fileUrl){fileUrl=pd.fileUrl;break}
-    if(pd.status==='failed')throw new Error('轉換失敗');
-    const pct=pd.progress||0;
-    bar.style.width=(25+pct*0.6)+'%';
-    btn.textContent='轉換 '+pct+'%';
-    await sleep(2000);
-  }
-  if(!fileUrl)throw new Error('轉換超時');
-  
-  btn.textContent='下載中...';bar.style.width='90%';
-  // loader.to URLs expire quickly - open directly instead of proxying
-  window.open(fileUrl,'_blank');
-}
-
-async function save(url,name){
+  // Use fetch+blob for reliable download with correct filename
   try{
-    const r=await fetch(url);
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const b=await r.blob();
+    const r=await fetch(streamUrl);
+    if(!r.ok){
+      // Fallback: direct link
+      const a=document.createElement('a');a.href=streamUrl;a.download=filename;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      return;
+    }
+    const blob=await r.blob();
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(b);a.download=name;
+    a.href=URL.createObjectURL(blob);a.download=filename;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-  }catch(e){window.open(url,'_blank')}
+  }catch(e){
+    // Last resort: open in new tab
+    window.open(streamUrl,'_blank');
+  }
 }
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
