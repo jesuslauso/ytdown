@@ -606,15 +606,12 @@
             const ext = isM4A ? 'm4a' : 'webm';
             const filename = encodeURIComponent(window._currentTitle.replace(/[<>:"/\\|?*]/g, ''));
             const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${filename}.${ext}`;
-            // Use hidden iframe to trigger download without leaving page
-            let iframe = document.getElementById('downloadFrame');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'downloadFrame';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
+            // Trigger download - Worker returns Content-Disposition: attachment
+            const w = window.open(streamUrl, '_blank');
+            if (!w || w.closed) {
+                // Popup blocked - fallback to location (attachment header prevents navigation)
+                window.location.href = streamUrl;
             }
-            iframe.src = streamUrl;
         });
     </script>
 </body>
