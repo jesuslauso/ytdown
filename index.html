@@ -161,16 +161,41 @@ async function dl(i){
 async function dlYtdown(f,btn,bar){
   btn.textContent='獲取連結...';bar.style.width='20%';
   let fileUrl=null,fileName='download';
-  for(let i=0;i<30;i++){
-    const r=await fetch(W+'/download?url='+encodeURIComponent(f.mediaUrl));
-    const d=await r.json();
-    if(d.status==='completed'&&d.fileUrl){fileUrl=d.fileUrl;fileName=d.fileName||fileName;break}
-    if(d.error)throw new Error(d.error);
-    btn.textContent='處理中...';bar.style.width=(20+i*2)+'%';
-    await sleep(2000);
+  const videoUrl='https://www.youtube.com/watch?v='+D.id;
+  // First try: /download with videoUrl for auto-fallback to loader.to
+  const dlParams=new URLSearchParams({url:f.mediaUrl,videoUrl:videoUrl,format:f.format||'mp3',quality:f.quality||'128k'});
+  const r=await fetch(W+'/download?'+dlParams);
+  const d=await r.json();
+  if(d.status==='completed'&&d.fileUrl){
+    fileUrl=d.fileUrl;fileName=d.fileName||fileName;
+  }else if(d.status==='processing'&&d.pollUrl){
+    // Poll ytdown
+    for(let i=0;i<20;i++){
+      await sleep(2000);
+      const pr=await fetch(W+'/download?url='+encodeURIComponent(d.pollUrl)+'&videoUrl='+encodeURIComponent(videoUrl)+'&format='+(f.format||'mp3')+'&quality='+(f.quality||'128k'));
+      const pd=await pr.json();
+      if(pd.status==='completed'&&pd.fileUrl){fileUrl=pd.fileUrl;fileName=pd.fileName||fileName;break}
+      btn.textContent='處理中...';bar.style.width=(20+i*2.5)+'%';
+    }
+  }else if(d.status==='processing'&&d.loaderId){
+    // Loader.to fallback - poll progress
+    btn.textContent='備用轉換中...';
+    for(let i=0;i<60;i++){
+      await sleep(2000);
+      const pr=await fetch(W+'/progress?id='+d.loaderId);
+      const pd=await pr.json();
+      if(pd.status==='completed'&&pd.fileUrl){fileUrl=pd.fileUrl;fileName=(D.title||D.id)+'.'+(f.format||'mp3');break}
+      if(pd.status==='failed')throw new Error('轉換失敗');
+      bar.style.width=(20+(pd.progress||0)*0.6)+'%';
+      btn.textContent='轉換 '+(pd.progress||0)+'%';
+    }
+  }else if(d.error){
+    // Both backends failed in Worker, try loader.to from frontend
+    btn.textContent='切換備用...';bar.style.width='30%';
+    await dlLoader(f,btn,bar);
+    return;
   }
   if(!fileUrl){
-    // Fallback to loader.to if ytdown download fails
     btn.textContent='切換備用...';bar.style.width='30%';
     await dlLoader(f,btn,bar);
     return;
