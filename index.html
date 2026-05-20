@@ -604,14 +604,36 @@
             if (!f || !f.url) return;
             const isM4A = f.mimeType.includes('mp4');
             const ext = isM4A ? 'm4a' : 'webm';
-            const filename = encodeURIComponent(window._currentTitle.replace(/[<>:"/\\|?*]/g, ''));
-            const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${filename}.${ext}`;
-            // Trigger download - Worker returns Content-Disposition: attachment
-            const w = window.open(streamUrl, '_blank');
-            if (!w || w.closed) {
-                // Popup blocked - fallback to location (attachment header prevents navigation)
-                window.location.href = streamUrl;
-            }
+            const safeTitle = window._currentTitle.replace(/[<>:"/\\|?*]/g, '');
+            const filename = `${safeTitle}.${ext}`;
+            const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${encodeURIComponent(filename)}`;
+            
+            // Use fetch + blob for reliable download (prevents browser from playing audio)
+            btn.disabled = true;
+            btn.textContent = '下載中...';
+            fetch(streamUrl)
+                .then(res => {
+                    if (!res.ok) throw new Error('Download failed');
+                    return res.blob();
+                })
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>⬇</span> 下載';
+                })
+                .catch(err => {
+                    // Fallback: open in new tab
+                    window.open(streamUrl, '_blank');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>⬇</span> 下載';
+                });
         });
     </script>
 </body>
