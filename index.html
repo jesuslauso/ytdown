@@ -555,16 +555,17 @@
                 document.getElementById('videoAuthor').textContent = data.author;
                 document.getElementById('videoDuration').textContent = '時長: ' + formatDuration(data.duration);
 
+                // Store formats data globally for download handler
+                window._currentFormats = data.formats;
+                window._currentTitle = data.title;
+
                 // Build download options
-                const optionsHtml = data.formats.map(f => {
+                const optionsHtml = data.formats.map((f, idx) => {
                     const isM4A = f.mimeType.includes('mp4');
                     const isOpus = f.mimeType.includes('opus');
                     const formatName = isM4A ? 'M4A' : (isOpus ? 'OPUS' : 'Audio');
-                    const ext = isM4A ? 'm4a' : 'webm';
                     const qualityText = f.quality === 'AUDIO_QUALITY_MEDIUM' ? '128kbps' : '48kbps';
                     const codecText = isM4A ? 'AAC' : 'Opus';
-                    const filename = encodeURIComponent(data.title.replace(/[<>:"/\\|?*]/g, ''));
-                    const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${filename}.${ext}`;
 
                     return `
                         <div class="download-option">
@@ -573,12 +574,12 @@
                                 <span class="option-quality">${codecText} ${qualityText}</span>
                                 <span class="option-size">${formatSize(f.size)}</span>
                             </div>
-                            <a class="download-btn" href="${streamUrl}" target="_blank" rel="noopener">
+                            <button class="download-btn" data-idx="${idx}">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                                 </svg>
                                 下載
-                            </a>
+                            </button>
                         </div>
                     `;
                 }).join('');
@@ -594,7 +595,27 @@
             }
         }
 
-        // Download is now handled via direct link to Worker /stream endpoint
+        // Event delegation for download buttons
+        document.getElementById('downloadOptions').addEventListener('click', function(e) {
+            const btn = e.target.closest('.download-btn');
+            if (!btn) return;
+            const idx = parseInt(btn.dataset.idx);
+            const f = window._currentFormats[idx];
+            if (!f || !f.url) return;
+            const isM4A = f.mimeType.includes('mp4');
+            const ext = isM4A ? 'm4a' : 'webm';
+            const filename = encodeURIComponent(window._currentTitle.replace(/[<>:"/\\|?*]/g, ''));
+            const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${filename}.${ext}`;
+            // Use hidden iframe to trigger download without leaving page
+            let iframe = document.getElementById('downloadFrame');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'downloadFrame';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = streamUrl;
+        });
     </script>
 </body>
 </html>
