@@ -201,7 +201,12 @@ async function dlYtdown(f,btn,bar){
     return;
   }
   btn.textContent='下載中...';bar.style.width='70%';
-  await save(W+'/stream?url='+encodeURIComponent(fileUrl)+'&filename='+encodeURIComponent(fileName),fileName);
+  // If from loader.to (savenow.to), open directly; if from ytdown (iamworker), use /stream proxy
+  if(fileUrl.includes('savenow.to')||fileUrl.includes('loader.to')){
+    window.open(fileUrl,'_blank');
+  }else{
+    await save(W+'/stream?url='+encodeURIComponent(fileUrl)+'&filename='+encodeURIComponent(fileName),fileName);
+  }
   bar.style.width='100%';
 }
 
@@ -230,8 +235,8 @@ async function dlLoader(f,btn,bar){
   if(!fileUrl)throw new Error('轉換超時');
   
   btn.textContent='下載中...';bar.style.width='90%';
-  const name=(D.title||D.id)+'.'+(f.format||'mp3');
-  await save(W+'/stream?url='+encodeURIComponent(fileUrl)+'&filename='+encodeURIComponent(name),name);
+  // loader.to URLs expire quickly - open directly instead of proxying
+  window.open(fileUrl,'_blank');
 }
 
 async function save(url,name){
