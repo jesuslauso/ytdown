@@ -31,7 +31,6 @@
             flex-direction: column;
         }
 
-        /* Header */
         .header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
@@ -70,7 +69,6 @@
             color: var(--primary);
         }
 
-        /* Main Content */
         .main {
             flex: 1;
             display: flex;
@@ -97,7 +95,6 @@
             margin-bottom: 40px;
         }
 
-        /* Search Box */
         .search-container {
             width: 100%;
             max-width: 680px;
@@ -152,7 +149,6 @@
             cursor: not-allowed;
         }
 
-        /* Result Card */
         .result-card {
             width: 100%;
             max-width: 680px;
@@ -217,7 +213,6 @@
             color: var(--text-secondary);
         }
 
-        /* Format Selection */
         .format-section {
             padding: 0 20px 20px;
         }
@@ -250,7 +245,6 @@
             color: var(--text);
         }
 
-        /* Download Options */
         .download-options {
             display: flex;
             flex-direction: column;
@@ -304,6 +298,8 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            min-width: 90px;
+            justify-content: center;
         }
 
         .download-btn:hover {
@@ -311,12 +307,17 @@
             transform: scale(1.02);
         }
 
+        .download-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .download-btn svg {
             width: 14px;
             height: 14px;
         }
 
-        /* Loading State */
         .loading {
             display: none;
             text-align: center;
@@ -346,7 +347,6 @@
             font-size: 14px;
         }
 
-        /* Error State */
         .error-msg {
             display: none;
             text-align: center;
@@ -361,7 +361,6 @@
             display: block;
         }
 
-        /* Features */
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -393,7 +392,6 @@
             line-height: 1.5;
         }
 
-        /* Footer */
         .footer {
             text-align: center;
             padding: 24px;
@@ -402,13 +400,13 @@
             border-top: 1px solid var(--border);
         }
 
-        /* Responsive */
         @media (max-width: 600px) {
             .hero-title { font-size: 1.8rem; }
             .video-info { flex-direction: column; }
             .video-thumb { width: 100%; height: auto; aspect-ratio: 16/9; }
             .search-btn { padding: 16px 20px; }
             .main { padding: 40px 16px 30px; }
+            .format-tabs { flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -422,7 +420,7 @@
 
     <main class="main">
         <h1 class="hero-title">YouTube 音頻下載器</h1>
-        <p class="hero-subtitle">貼上 YouTube 連結，即可免費下載音頻檔案</p>
+        <p class="hero-subtitle">貼上 YouTube 連結，即可免費下載 MP3 / M4A 音頻檔案</p>
 
         <div class="search-container">
             <div class="search-box">
@@ -435,7 +433,7 @@
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p class="loading-text">正在獲取音頻資訊...</p>
+            <p class="loading-text" id="loadingText">正在獲取影片資訊...</p>
         </div>
 
         <div class="error-msg" id="errorMsg"></div>
@@ -450,6 +448,10 @@
                 </div>
             </div>
             <div class="format-section">
+                <div class="format-tabs" id="formatTabs">
+                    <button class="format-tab active" data-type="audio" onclick="switchTab('audio')">音頻</button>
+                    <button class="format-tab" data-type="video" onclick="switchTab('video')">影片</button>
+                </div>
                 <div class="download-options" id="downloadOptions"></div>
             </div>
         </div>
@@ -458,7 +460,7 @@
             <div class="feature">
                 <div class="feature-icon">&#9889;</div>
                 <div class="feature-title">極速下載</div>
-                <div class="feature-desc">直接從 YouTube 伺服器獲取音頻流，無需等待轉換</div>
+                <div class="feature-desc">高速伺服器直接處理，支援 MP3、M4A 格式</div>
             </div>
             <div class="feature">
                 <div class="feature-icon">&#128274;</div>
@@ -468,7 +470,7 @@
             <div class="feature">
                 <div class="feature-icon">&#127911;</div>
                 <div class="feature-title">高品質音頻</div>
-                <div class="feature-desc">支援 M4A (AAC) 和 WebM (Opus) 格式，最高 128kbps</div>
+                <div class="feature-desc">支援 M4A (AAC) 和 MP3 格式，最高 128kbps</div>
             </div>
         </div>
     </main>
@@ -479,17 +481,16 @@
 
     <script>
         const API_BASE = 'https://mute-smoke-da30.so64134022.workers.dev';
+        let currentData = null;
+        let currentTab = 'audio';
 
-        // Enter key support
         document.getElementById('urlInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleSearch();
         });
 
         function extractVideoId(input) {
             input = input.trim();
-            // Direct video ID
             if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
-            // YouTube URLs
             const patterns = [
                 /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
                 /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
@@ -501,20 +502,9 @@
             return null;
         }
 
-        function formatDuration(seconds) {
-            const m = Math.floor(seconds / 60);
-            const s = seconds % 60;
-            return `${m}:${s.toString().padStart(2, '0')}`;
-        }
-
-        function formatSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1048576).toFixed(1) + ' MB';
-        }
-
-        function showLoading(show) {
+        function showLoading(show, text) {
             document.getElementById('loading').classList.toggle('show', show);
+            if (text) document.getElementById('loadingText').textContent = text;
             document.getElementById('resultCard').classList.remove('show');
             document.getElementById('errorMsg').classList.remove('show');
         }
@@ -525,6 +515,44 @@
             el.classList.add('show');
             document.getElementById('loading').classList.remove('show');
             document.getElementById('resultCard').classList.remove('show');
+        }
+
+        function switchTab(type) {
+            currentTab = type;
+            document.querySelectorAll('.format-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.type === type);
+            });
+            renderOptions();
+        }
+
+        function renderOptions() {
+            if (!currentData) return;
+            const items = currentTab === 'audio' ? currentData.audio : currentData.video;
+            
+            const html = items.map((item, idx) => {
+                const ext = item.extension || 'M4A';
+                const quality = item.quality || '';
+                const size = item.fileSize || '';
+                const resolution = item.resolution ? ` (${item.resolution})` : '';
+                
+                return `
+                    <div class="download-option">
+                        <div class="option-info">
+                            <span class="option-format">${ext}</span>
+                            <span class="option-quality">${quality}${resolution}</span>
+                            <span class="option-size">${size}</span>
+                        </div>
+                        <button class="download-btn" data-idx="${idx}" data-type="${currentTab}" onclick="startDownload(this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                            </svg>
+                            下載
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('downloadOptions').innerHTML = html || '<p style="color:var(--text-secondary);text-align:center;padding:16px;">無可用格式</p>';
         }
 
         async function handleSearch() {
@@ -538,53 +566,36 @@
 
             const btn = document.getElementById('searchBtn');
             btn.disabled = true;
-            showLoading(true);
+            showLoading(true, '正在獲取影片資訊...');
 
             try {
                 const resp = await fetch(`${API_BASE}/audio?id=${videoId}`);
                 const data = await resp.json();
 
                 if (data.error) {
-                    showError(data.error + (data.reason ? ': ' + data.reason : ''));
+                    showError(data.error + (data.reason ? ' (' + data.reason + ')' : ''));
                     return;
                 }
 
-                // Show result
+                currentData = data;
+                currentTab = 'audio';
+
                 document.getElementById('videoThumb').src = data.thumbnail;
                 document.getElementById('videoTitle').textContent = data.title;
-                document.getElementById('videoAuthor').textContent = data.author;
-                document.getElementById('videoDuration').textContent = '時長: ' + formatDuration(data.duration);
+                document.getElementById('videoAuthor').textContent = data.channel || '';
+                document.getElementById('videoDuration').textContent = data.duration ? '時長: ' + data.duration : '';
 
-                // Store formats data globally for download handler
-                window._currentFormats = data.formats;
-                window._currentTitle = data.title;
+                // Show/hide video tab
+                const videoTab = document.querySelector('[data-type="video"]');
+                videoTab.style.display = (data.video && data.video.length > 0) ? '' : 'none';
 
-                // Build download options
-                const optionsHtml = data.formats.map((f, idx) => {
-                    const isM4A = f.mimeType.includes('mp4');
-                    const isOpus = f.mimeType.includes('opus');
-                    const formatName = isM4A ? 'M4A' : (isOpus ? 'OPUS' : 'Audio');
-                    const qualityText = f.quality === 'AUDIO_QUALITY_MEDIUM' ? '128kbps' : '48kbps';
-                    const codecText = isM4A ? 'AAC' : 'Opus';
+                // Reset to audio tab
+                document.querySelectorAll('.format-tab').forEach(t => {
+                    t.classList.toggle('active', t.dataset.type === 'audio');
+                });
 
-                    return `
-                        <div class="download-option">
-                            <div class="option-info">
-                                <span class="option-format">${formatName}</span>
-                                <span class="option-quality">${codecText} ${qualityText}</span>
-                                <span class="option-size">${formatSize(f.size)}</span>
-                            </div>
-                            <button class="download-btn" data-idx="${idx}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                                </svg>
-                                下載
-                            </button>
-                        </div>
-                    `;
-                }).join('');
+                renderOptions();
 
-                document.getElementById('downloadOptions').innerHTML = optionsHtml;
                 document.getElementById('loading').classList.remove('show');
                 document.getElementById('resultCard').classList.add('show');
 
@@ -595,46 +606,78 @@
             }
         }
 
-        // Event delegation for download buttons
-        document.getElementById('downloadOptions').addEventListener('click', function(e) {
-            const btn = e.target.closest('.download-btn');
-            if (!btn) return;
+        async function startDownload(btn) {
             const idx = parseInt(btn.dataset.idx);
-            const f = window._currentFormats[idx];
-            if (!f || !f.url) return;
-            const isM4A = f.mimeType.includes('mp4');
-            const ext = isM4A ? 'm4a' : 'webm';
-            const safeTitle = window._currentTitle.replace(/[<>:"/\\|?*]/g, '');
-            const filename = `${safeTitle}.${ext}`;
-            const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(f.url)}&filename=${encodeURIComponent(filename)}`;
-            
-            // Use fetch + blob for reliable download (prevents browser from playing audio)
+            const type = btn.dataset.type;
+            const items = type === 'audio' ? currentData.audio : currentData.video;
+            const item = items[idx];
+            if (!item || !item.mediaUrl) return;
+
             btn.disabled = true;
-            btn.textContent = '下載中...';
-            fetch(streamUrl)
-                .then(res => {
-                    if (!res.ok) throw new Error('Download failed');
-                    return res.blob();
-                })
-                .then(blob => {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    btn.disabled = false;
-                    btn.innerHTML = '<span>⬇</span> 下載';
-                })
-                .catch(err => {
-                    // Fallback: open in new tab
-                    window.open(streamUrl, '_blank');
-                    btn.disabled = false;
-                    btn.innerHTML = '<span>⬇</span> 下載';
-                });
-        });
+            btn.innerHTML = '處理中...';
+
+            try {
+                // Step 1: Poll worker03.com via our Worker /download endpoint
+                let fileUrl = null;
+                let fileName = null;
+                let attempts = 0;
+                const maxAttempts = 30;
+
+                while (attempts < maxAttempts) {
+                    const resp = await fetch(`${API_BASE}/download?url=${encodeURIComponent(item.mediaUrl)}`);
+                    const data = await resp.json();
+
+                    if (data.status === 'completed' && data.fileUrl && data.fileUrl !== 'Waiting...') {
+                        fileUrl = data.fileUrl;
+                        fileName = data.fileName || `${currentData.title}.${item.extension.toLowerCase()}`;
+                        break;
+                    }
+
+                    if (data.status === 'error') {
+                        throw new Error('處理失敗，請重試');
+                    }
+
+                    // Show progress
+                    const progress = data.progress || '處理中';
+                    const position = data.position ? ` (排隊: #${data.position})` : '';
+                    btn.innerHTML = `${progress}${position}`;
+                    
+                    attempts++;
+                    await new Promise(r => setTimeout(r, 2000));
+                }
+
+                if (!fileUrl) {
+                    throw new Error('處理超時，請重試');
+                }
+
+                // Step 2: Download via /stream endpoint
+                const safeTitle = currentData.title.replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
+                const ext = item.extension.toLowerCase();
+                const downloadName = `${safeTitle}.${ext}`;
+                const streamUrl = `${API_BASE}/stream?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(downloadName)}`;
+
+                btn.innerHTML = '下載中...';
+
+                const dlResp = await fetch(streamUrl);
+                if (!dlResp.ok) throw new Error('下載失敗');
+
+                const blob = await dlResp.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = downloadName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+
+            } catch (err) {
+                alert(err.message || '下載失敗，請重試');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> 下載`;
+            }
+        }
     </script>
 </body>
 </html>
